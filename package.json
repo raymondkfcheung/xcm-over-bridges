@@ -1,0 +1,32 @@
+{
+  "name": "xcm-over-bridges",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raymondkfcheung/xcm-over-bridges.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/raymondkfcheung/xcm-over-bridges/issues"
+  },
+  "homepage": "https://github.com/raymondkfcheung/xcm-over-bridges#readme",
+  "devDependencies": {
+    "@types/node": "^24.6.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@noble/hashes": "^2.0.1",
+    "@polkadot-labs/hdkd": "^0.0.25",
+    "@polkadot-labs/hdkd-helpers": "^0.0.26",
+    "polkadot-api": "^1.19.1"
+  }
+}
