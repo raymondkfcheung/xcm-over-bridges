@@ -1,2 +1,9 @@
+# Node/vitest files
+coverage
 node_modules
 package-lock.json
+
+# Chopsticks/Papi files
+.papi
+**/__snapshots__
+db.sqlite*
