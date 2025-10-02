@@ -1,12 +1,13 @@
 import { withExpect, setupContext } from "@acala-network/chopsticks-testing";
 import { describe, expect, it } from "vitest";
 import { ApiPromise, WsProvider } from "@polkadot/api";
+import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 
 // Create testing utilities with your test runner's expect function
 const { check, checkHrmp, checkSystemEvents, checkUmp } = withExpect(expect);
 const endpoint = "wss://polkadot-bridge-hub-rpc.polkadot.io"; // Remote
 // const endpoint = "ws://localhost:8000"; // Local
-const provider = new WsProvider(endpoint);
+const provider = new WsProvider(endpoint) as ProviderInterface;
 
 // https://github.com/AcalaNetwork/chopsticks?tab=readme-ov-file#basic-usage
 describe.skip("My Chain Tests", () => {
