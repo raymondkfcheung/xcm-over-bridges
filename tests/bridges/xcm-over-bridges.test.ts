@@ -1,27 +1,43 @@
-import { withExpect, setupContext } from "@acala-network/chopsticks-testing";
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
+import { createClient } from "polkadot-api";
+import { getWsProvider } from "polkadot-api/ws-provider";
+import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { ApiPromise, WsProvider } from "@polkadot/api";
-import type { ProviderInterface } from "@polkadot/rpc-provider/types";
+import { KusamaBridgeHub, PolkadotBridgeHub } from "@polkadot-api/descriptors";
 
-// Create testing utilities with your test runner's expect function
-const { check, checkHrmp, checkSystemEvents, checkUmp } = withExpect(expect);
-const endpoint = "wss://polkadot-bridge-hub-rpc.polkadot.io"; // Remote
-// const endpoint = "ws://localhost:8000"; // KusamaAssetHub
-// const endpoint = "ws://localhost:8001"; // KusamaBridgeHub
-// const endpoint = "ws://localhost:8003"; // PolkadotAssetHub
-// const endpoint = "ws://localhost:8004"; // PolkadotBridgeHub
-const provider = new WsProvider(endpoint) as ProviderInterface;
+const KUSAMA_BH = "ws://localhost:8001";
+const POLKADOT_BH = "ws://localhost:8004";
 
-describe("XCM Testing", () => {
-  it("should check UMP messages", async () => {
-    const api = await ApiPromise.create({ provider });
-    await api.isReady;
-    await checkUmp({ api }).redact().toMatchSnapshot("upward messages");
-  });
+async function getSafeXcmVersion(descriptor: any, endpoint: string) {
+  const provider = getWsProvider(endpoint);
+  const client = createClient(withPolkadotSdkCompat(provider));
+  const api: any = client.getTypedApi(descriptor);
 
-  it("should check HRMP messages", async () => {
-    const api = await ApiPromise.create({ provider });
-    await api.isReady;
-    await checkHrmp({ api }).redact().toMatchSnapshot("horizontal messages");
+  // Pallet may be named PolkadotXcm or XcmPallet depending on runtime
+  const hasPolkadotXcm = api.query?.PolkadotXcm?.SafeXcmVersion;
+  const hasXcmPallet = api.query?.XcmPallet?.SafeXcmVersion;
+
+  const ver = hasPolkadotXcm
+    ? await api.query.PolkadotXcm.SafeXcmVersion.getValue()
+    : hasXcmPallet
+      ? await api.query.XcmPallet.SafeXcmVersion.getValue()
+      : null;
+
+  client.destroy();
+
+  return ver;
+}
+
+describe("XCM Over Bridges Test", () => {
+  it("reads SafeXcmVersion on both Bridge Hubs", async () => {
+    const kusamaVer = await getSafeXcmVersion(KusamaBridgeHub, KUSAMA_BH);
+    const polkadotVer = await getSafeXcmVersion(PolkadotBridgeHub, POLKADOT_BH);
+
+    console.log({ kusamaVer, polkadotVer });
+
+    expect(kusamaVer).toBeDefined();
+    expect(polkadotVer).toBeDefined();
+
+    expect(kusamaVer).toEqual(polkadotVer);
   });
 });
