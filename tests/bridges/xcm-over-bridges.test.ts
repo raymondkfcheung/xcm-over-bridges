@@ -3,6 +3,8 @@ import { createClient, Binary, Enum } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 import {
   KusamaBridgeHub,
   PolkadotAssetHub,
@@ -260,6 +262,13 @@ describe("XCM Over Bridges Tests", () => {
       },
     );
 
-    console.log("Entries:", JSON.stringify(polkadotAssetHubClient, toHuman, 2));
+    const provider = new WsProvider(POLKADOT_AH) as ProviderInterface;
+    const api: any = await ApiPromise.create({ provider });
+    const hrmpOutboundMessages =
+      await api.query.parachainSystem.hrmpOutboundMessages();
+    console.log(
+      "HRMP Outbound Messages:",
+      JSON.stringify(hrmpOutboundMessages, toHuman, 2),
+    );
   });
 });
