@@ -223,5 +223,43 @@ describe("XCM Over Bridges Tests", () => {
       }
     }
     expect(extrinsic.ok).toBe(true);
+
+    const transferEvents: any[] =
+      await polkadotAssetHubApi.event.Balances.Transfer.pull();
+    expect(transferEvents.length).greaterThanOrEqual(1);
+    expect(transferEvents[transferEvents.length - 1].payload.amount).toBe(
+      100_000n,
+    );
+
+    const xcmpMessageSentEvents: any[] =
+      await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
+    expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
+
+    const sentEvents: any[] =
+      await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
+    expect(sentEvents.length).greaterThanOrEqual(1);
+    expect(sentEvents[sentEvents.length - 1].payload.destination).toStrictEqual(
+      {
+        parents: 2,
+        interior: {
+          type: "X2",
+          value: [
+            {
+              type: "GlobalConsensus",
+              value: {
+                type: "Kusama",
+                value: undefined,
+              },
+            },
+            {
+              type: "Parachain",
+              value: 1000,
+            },
+          ],
+        },
+      },
+    );
+
+    console.log("Entries:", JSON.stringify(polkadotAssetHubClient, toHuman, 2));
   });
 });
