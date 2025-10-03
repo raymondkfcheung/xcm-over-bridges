@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, assert } from "vitest";
+import { withExpect } from "@acala-network/chopsticks-testing";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient, Binary, Enum } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import { getWsProvider } from "polkadot-api/ws-provider";
@@ -26,6 +27,7 @@ import {
 } from "@polkadot-labs/hdkd-helpers";
 import toHuman from "../../src/helper.js";
 
+const { check, checkHrmp, checkSystemEvents, checkUmp } = withExpect(expect);
 const XCM_VERSION = 5;
 const KUSAMA_BH = "ws://localhost:8001";
 const POLKADOT_AH = "ws://localhost:8003";
@@ -262,10 +264,17 @@ describe("XCM Over Bridges Tests", () => {
       },
     );
 
-    const provider = new WsProvider(POLKADOT_AH) as ProviderInterface;
-    const api: any = await ApiPromise.create({ provider });
-    const hrmpOutboundMessages =
-      await api.query.parachainSystem.hrmpOutboundMessages();
+    const polkadotAssetHubProvider = new WsProvider(
+      POLKADOT_AH,
+    ) as ProviderInterface;
+    const polkadotAssetHubRpcApi: any = await ApiPromise.create({
+      provider: polkadotAssetHubProvider,
+    });
+    await polkadotAssetHubRpcApi.isReady;
+    const hrmpOutboundMessages = await checkHrmp({
+      api: polkadotAssetHubRpcApi,
+    }).value();
+    // const hrmpOutboundMessages = await api.query.parachainSystem.hrmpOutboundMessages();
     console.log(
       "HRMP Outbound Messages:",
       JSON.stringify(hrmpOutboundMessages, toHuman, 2),
