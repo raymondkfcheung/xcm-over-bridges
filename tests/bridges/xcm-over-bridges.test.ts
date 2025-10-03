@@ -2,16 +2,23 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createClient } from "polkadot-api";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
-import { KusamaBridgeHub, PolkadotBridgeHub } from "@polkadot-api/descriptors";
+import {
+  KusamaBridgeHub,
+  PolkadotAssetHub,
+  PolkadotBridgeHub,
+} from "@polkadot-api/descriptors";
 import toHuman from "../../src/helper.js";
 
 const XCM_VERSION = 5;
 const KUSAMA_BH = "ws://localhost:8001";
+const POLKADOT_AH = "ws://localhost:8003";
 const POLKADOT_BH = "ws://localhost:8004";
 
 let kusamaBridgeHubClient: any;
+let polkadotAssetHubClient: any;
 let polkadotBridgeHubClient: any;
 let kusamaBridgeHubApi: any;
+let polkadotAssetHubApi: any;
 let polkadotBridgeHubApi: any;
 
 async function getSafeXcmVersion(api: any) {
@@ -42,39 +49,25 @@ function supportsV5ForOtherChain(
   );
 }
 
-it("asserts both Bridge Hubs advertise support for XCM v5 to each other", async () => {
-  const kusamaBHVers = await getSupportedVersions(kusamaBridgeHubApi);
-  const polkadotBHVers = await getSupportedVersions(polkadotBridgeHubApi);
-
-  const kusamaSaysPolkadotBHv5 = supportsV5ForOtherChain(
-    kusamaBHVers,
-    "Polkadot",
-    1002,
-  );
-  const polkadotSaysKusamaBHv5 = supportsV5ForOtherChain(
-    polkadotBHVers,
-    "Kusama",
-    1002,
-  );
-
-  expect(kusamaSaysPolkadotBHv5).toBe(true);
-  expect(polkadotSaysKusamaBHv5).toBe(true);
-});
-
 beforeAll(async () => {
   kusamaBridgeHubClient = createClient(
     withPolkadotSdkCompat(getWsProvider(KUSAMA_BH)),
+  );
+  polkadotAssetHubClient = createClient(
+    withPolkadotSdkCompat(getWsProvider(POLKADOT_AH)),
   );
   polkadotBridgeHubClient = createClient(
     withPolkadotSdkCompat(getWsProvider(POLKADOT_BH)),
   );
 
   kusamaBridgeHubApi = kusamaBridgeHubClient.getTypedApi(KusamaBridgeHub);
+  polkadotAssetHubApi = polkadotAssetHubClient.getTypedApi(PolkadotAssetHub);
   polkadotBridgeHubApi = polkadotBridgeHubClient.getTypedApi(PolkadotBridgeHub);
 });
 
 afterAll(async () => {
   await kusamaBridgeHubClient?.destroy?.();
+  await polkadotAssetHubClient?.destroy?.();
   await polkadotBridgeHubClient?.destroy?.();
 });
 
@@ -118,4 +111,6 @@ describe("XCM Over Bridges Tests", () => {
     expect(kusamaSaysPolkadotBHv5).toBe(true);
     expect(polkadotSaysKusamaBHv5).toBe(true);
   });
+
+  it("transfers across Bridges", async () => {});
 });
