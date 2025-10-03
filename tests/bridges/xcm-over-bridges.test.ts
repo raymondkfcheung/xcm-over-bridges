@@ -144,13 +144,13 @@ describe("XCM Over Bridges Tests", () => {
     const origin = Enum("system", Enum("Signed", aliceAddress));
     const tx: any = polkadotAssetHubApi.tx.PolkadotXcm.transfer_assets({
       dest: XcmVersionedLocation.V5({
-        parents: 1,
+        parents: 2,
         interior: XcmV5Junctions.X2([
           XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
           XcmV5Junction.Parachain(1000),
         ]),
       }),
-      beneficiary: {
+      beneficiary: XcmVersionedLocation.V5({
         parents: 0,
         interior: XcmV5Junctions.X1(
           XcmV5Junction.AccountId32({
@@ -159,7 +159,7 @@ describe("XCM Over Bridges Tests", () => {
             ),
           }),
         ),
-      },
+      }),
       assets: XcmVersionedAssets.V5([
         {
           id: {
@@ -172,7 +172,21 @@ describe("XCM Over Bridges Tests", () => {
       fee_asset_item: 0,
       weight_limit: XcmV3WeightLimit.Unlimited(),
     });
-    const extrinsic = await tx.signAndSubmit(aliceSigner);
-    console.log(JSON.stringify(extrinsic, toHuman, 2));
+    const decodedCall: any = tx.decodedCall;
+    console.log("Executing XCM:", JSON.stringify(decodedCall, toHuman, 2));
+
+    const dryRunResult: any =
+      await polkadotAssetHubApi.apis.DryRunApi.dry_run_call(
+        origin,
+        decodedCall,
+        XCM_VERSION,
+      );
+    console.log(
+      "Dry Run Result:",
+      JSON.stringify(dryRunResult.value, toHuman, 2),
+    );
+
+    // const extrinsic = await tx.signAndSubmit(aliceSigner);
+    // console.log("Execution Result:", JSON.stringify(extrinsic, toHuman, 2));
   });
 });
