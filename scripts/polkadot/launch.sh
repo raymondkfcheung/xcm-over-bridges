@@ -2,6 +2,7 @@
 
 set -e
 
+echo "Launching Polkadot..."
 npx @acala-network/chopsticks xcm \
     -r polkadot \
     -p polkadot-asset-hub \
