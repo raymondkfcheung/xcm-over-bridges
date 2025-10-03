@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, assert } from "vitest";
 import { createClient, Binary, Enum } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import { getWsProvider } from "polkadot-api/ws-provider";
@@ -142,51 +142,86 @@ describe("XCM Over Bridges Tests", () => {
     );
     const aliceAddress = ss58Address(alicePublicKey);
     const origin = Enum("system", Enum("Signed", aliceAddress));
-    const tx: any = polkadotAssetHubApi.tx.PolkadotXcm.transfer_assets({
-      dest: XcmVersionedLocation.V5({
-        parents: 2,
-        interior: XcmV5Junctions.X2([
-          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
-          XcmV5Junction.Parachain(1000),
-        ]),
-      }),
-      beneficiary: XcmVersionedLocation.V5({
-        parents: 0,
-        interior: XcmV5Junctions.X1(
-          XcmV5Junction.AccountId32({
-            id: Binary.fromHex(
-              "0x9818ff3c27d256631065ecabf0c50e02551e5c5342b8669486c1e566fcbf847f",
-            ),
-          }),
-        ),
-      }),
-      assets: XcmVersionedAssets.V5([
-        {
-          id: {
-            parents: 1,
-            interior: XcmV5Junctions.Here(),
+    const tx: any =
+      polkadotAssetHubApi.tx.PolkadotXcm.limited_reserve_transfer_assets({
+        dest: XcmVersionedLocation.V5({
+          parents: 2,
+          interior: XcmV5Junctions.X2([
+            XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
+            XcmV5Junction.Parachain(1000),
+          ]),
+        }),
+        beneficiary: XcmVersionedLocation.V5({
+          parents: 0,
+          interior: XcmV5Junctions.X1(
+            XcmV5Junction.AccountId32({
+              id: Binary.fromHex(
+                "0x9818ff3c27d256631065ecabf0c50e02551e5c5342b8669486c1e566fcbf847f",
+              ),
+            }),
+          ),
+        }),
+        assets: XcmVersionedAssets.V5([
+          {
+            id: {
+              parents: 1,
+              interior: XcmV5Junctions.Here(),
+            },
+            fun: XcmV3MultiassetFungibility.Fungible(100_000n),
           },
-          fun: XcmV3MultiassetFungibility.Fungible(100_000n),
-        },
-      ]),
-      fee_asset_item: 0,
-      weight_limit: XcmV3WeightLimit.Unlimited(),
-    });
+        ]),
+        fee_asset_item: 0,
+        weight_limit: XcmV3WeightLimit.Unlimited(),
+      });
     const decodedCall: any = tx.decodedCall;
-    console.log("Executing XCM:", JSON.stringify(decodedCall, toHuman, 2));
-
     const dryRunResult: any =
       await polkadotAssetHubApi.apis.DryRunApi.dry_run_call(
         origin,
         decodedCall,
         XCM_VERSION,
       );
-    console.log(
-      "Dry Run Result:",
-      JSON.stringify(dryRunResult.value, toHuman, 2),
-    );
+    const executionResult = dryRunResult.value.execution_result;
+    if (!dryRunResult.success || !executionResult.success) {
+      console.error("Local Dry Run failed!");
+      console.log("Dry Run XCM:", JSON.stringify(decodedCall, toHuman, 2));
+      console.log(
+        "Dry Run Result:",
+        JSON.stringify(dryRunResult.value, toHuman, 2),
+      );
+    }
+    expect(dryRunResult.success).toBe(true);
+    expect(executionResult.success).toBe(true);
 
-    // const extrinsic = await tx.signAndSubmit(aliceSigner);
-    // console.log("Execution Result:", JSON.stringify(extrinsic, toHuman, 2));
+    const forwarded_xcms: any[] = dryRunResult.value.forwarded_xcms;
+    const destination = forwarded_xcms[0][0];
+    const messages = forwarded_xcms[0][1];
+    expect(destination.value).toStrictEqual({
+      parents: 1,
+      interior: {
+        type: "X1",
+        value: {
+          type: "Parachain",
+          value: 1002,
+        },
+      },
+    });
+    expect(messages).toHaveLength(1);
+
+    const extrinsic = await tx.signAndSubmit(aliceSigner);
+    if (!extrinsic.ok) {
+      const dispatchError = extrinsic.dispatchError;
+      if (dispatchError.type === "Module") {
+        const modErr: any = dispatchError.value;
+        console.error(
+          `Dispatch error in module: ${modErr.type} → ${modErr.value?.type}`,
+        );
+      } else {
+        console.error(
+          "Dispatch error:",
+          JSON.stringify(dispatchError, toHuman, 2),
+        );
+      }
+    }
+    expect(extrinsic.ok).toBe(true);
   });
 });
