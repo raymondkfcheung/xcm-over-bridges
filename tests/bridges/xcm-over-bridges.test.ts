@@ -1,6 +1,12 @@
 import { withExpect } from "@acala-network/chopsticks-testing";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createClient, Binary, Enum } from "polkadot-api";
+import {
+  createClient,
+  Binary,
+  Enum,
+  type BlockInfo,
+  type PolkadotClient,
+} from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
@@ -27,18 +33,24 @@ import {
 } from "@polkadot-labs/hdkd-helpers";
 import toHuman from "../../src/helper.js";
 
-const { check, checkHrmp, checkSystemEvents, checkUmp } = withExpect(expect);
+const { checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
+const MAX_RETRIES = 8; // Number of attempts to wait for block finalisation
 const KUSAMA_BH = "ws://localhost:8001";
 const POLKADOT_AH = "ws://localhost:8003";
 const POLKADOT_BH = "ws://localhost:8004";
 
-let kusamaBridgeHubClient: any;
-let polkadotAssetHubClient: any;
-let polkadotBridgeHubClient: any;
+let kusamaBridgeHubClient: PolkadotClient;
+let polkadotAssetHubClient: PolkadotClient;
+let polkadotBridgeHubClient: PolkadotClient;
+
 let kusamaBridgeHubApi: any;
 let polkadotAssetHubApi: any;
 let polkadotBridgeHubApi: any;
+
+let kusamaBridgeHubCurrentBlock: BlockInfo;
+let polkadotAssetHubCurrentBlock: BlockInfo;
+let polkadotBridgeHubCurrentBlock: BlockInfo;
 
 async function getSafeXcmVersion(api: any) {
   return await api.query.PolkadotXcm.SafeXcmVersion.getValue();
@@ -46,6 +58,27 @@ async function getSafeXcmVersion(api: any) {
 
 async function getSupportedVersions(api: any) {
   return await api.query.PolkadotXcm.SupportedVersion.getEntries();
+}
+
+async function waitForNextBlock(
+  client: PolkadotClient,
+  currentBlock: BlockInfo,
+) {
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    const nextBlock = await client.getFinalizedBlock();
+    if (nextBlock.number == currentBlock.number) {
+      const waiting = 1_000 * 2 ** i;
+      console.log(
+        `Waiting ${waiting / 1_000}s for the next block to be finalised (${i + 1}/${MAX_RETRIES})...`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waiting));
+      continue;
+    }
+
+    return nextBlock;
+  }
+
+  return currentBlock;
 }
 
 function createApiClient(endpoint: string) {
@@ -87,12 +120,18 @@ beforeAll(async () => {
   kusamaBridgeHubApi = kusamaBridgeHubClient.getTypedApi(KusamaBridgeHub);
   polkadotAssetHubApi = polkadotAssetHubClient.getTypedApi(PolkadotAssetHub);
   polkadotBridgeHubApi = polkadotBridgeHubClient.getTypedApi(PolkadotBridgeHub);
+
+  kusamaBridgeHubCurrentBlock = await kusamaBridgeHubClient.getFinalizedBlock();
+  polkadotAssetHubCurrentBlock =
+    await polkadotAssetHubClient.getFinalizedBlock();
+  polkadotBridgeHubCurrentBlock =
+    await polkadotBridgeHubClient.getFinalizedBlock();
 });
 
 afterAll(async () => {
-  await kusamaBridgeHubClient?.destroy?.();
-  await polkadotAssetHubClient?.destroy?.();
-  await polkadotBridgeHubClient?.destroy?.();
+  kusamaBridgeHubClient?.destroy?.();
+  polkadotAssetHubClient?.destroy?.();
+  polkadotBridgeHubClient?.destroy?.();
 });
 
 describe("XCM Over Bridges Tests", () => {
@@ -198,7 +237,7 @@ describe("XCM Over Bridges Tests", () => {
 
     const forwarded_xcms: any[] = dryRunResult.value.forwarded_xcms;
     const destination = forwarded_xcms[0][0];
-    const messages = forwarded_xcms[0][1];
+    const remoteMessage = forwarded_xcms[0][1];
     expect(destination.value).toStrictEqual({
       parents: 1,
       interior: {
@@ -209,7 +248,7 @@ describe("XCM Over Bridges Tests", () => {
         },
       },
     });
-    expect(messages).toHaveLength(1);
+    expect(remoteMessage).toHaveLength(1);
 
     const extrinsic = await tx.signAndSubmit(aliceSigner);
     if (!extrinsic.ok) {
@@ -228,6 +267,14 @@ describe("XCM Over Bridges Tests", () => {
     }
     expect(extrinsic.ok).toBe(true);
 
+    const polkadotAssetHubNextBlock = await waitForNextBlock(
+      polkadotAssetHubClient,
+      polkadotAssetHubCurrentBlock,
+    );
+    expect(polkadotAssetHubNextBlock.number).toBeGreaterThan(
+      polkadotAssetHubCurrentBlock.number,
+    );
+
     const transferEvents: any[] =
       await polkadotAssetHubApi.event.Balances.Transfer.pull();
     expect(transferEvents.length).greaterThanOrEqual(1);
@@ -242,27 +289,26 @@ describe("XCM Over Bridges Tests", () => {
     const sentEvents: any[] =
       await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
     expect(sentEvents.length).greaterThanOrEqual(1);
-    expect(sentEvents[sentEvents.length - 1].payload.destination).toStrictEqual(
-      {
-        parents: 2,
-        interior: {
-          type: "X2",
-          value: [
-            {
-              type: "GlobalConsensus",
-              value: {
-                type: "Kusama",
-                value: undefined,
-              },
+    const sentEvent = sentEvents[sentEvents.length - 1].payload;
+    expect(sentEvent.destination).toStrictEqual({
+      parents: 2,
+      interior: {
+        type: "X2",
+        value: [
+          {
+            type: "GlobalConsensus",
+            value: {
+              type: "Kusama",
+              value: undefined,
             },
-            {
-              type: "Parachain",
-              value: 1000,
-            },
-          ],
-        },
+          },
+          {
+            type: "Parachain",
+            value: 1000,
+          },
+        ],
       },
-    );
+    });
 
     const polkadotAssetHubProvider = new WsProvider(
       POLKADOT_AH,
@@ -274,10 +320,31 @@ describe("XCM Over Bridges Tests", () => {
     const hrmpOutboundMessages = await checkHrmp({
       api: polkadotAssetHubRpcApi,
     }).value();
-    // const hrmpOutboundMessages = await api.query.parachainSystem.hrmpOutboundMessages();
-    console.log(
-      "HRMP Outbound Messages:",
-      JSON.stringify(hrmpOutboundMessages, toHuman, 2),
+    // const hrmpOutboundMessages = await polkadotAssetHubRpcApi.query.parachainSystem.hrmpOutboundMessages();
+    // console.log(
+    //   "HRMP Outbound Messages:",
+    //   JSON.stringify(hrmpOutboundMessages, toHuman, 2),
+    // );
+    expect(hrmpOutboundMessages).toBeDefined();
+    const outboundMessages: any[] = hrmpOutboundMessages[0].data[1].v5;
+    const topicId = outboundMessages[outboundMessages.length - 1].setTopic;
+
+    const polkadotBridgeHubNextBlock = await waitForNextBlock(
+      polkadotBridgeHubClient,
+      polkadotBridgeHubCurrentBlock,
     );
+    expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
+      polkadotBridgeHubCurrentBlock.number,
+    );
+
+    const messageAcceptedEvents: any[] =
+      await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
+    expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
+
+    const processedEvents: any[] =
+      await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
+    expect(processedEvents.length).greaterThanOrEqual(1);
+    const processedEvent = processedEvents[processedEvents.length - 1].payload;
+    expect(processedEvent.id.asHex()).eq(topicId);
   });
 });
