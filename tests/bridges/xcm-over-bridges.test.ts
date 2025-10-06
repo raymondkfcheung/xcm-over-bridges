@@ -52,6 +52,16 @@ let kusamaBridgeHubCurrentBlock: BlockInfo;
 let polkadotAssetHubCurrentBlock: BlockInfo;
 let polkadotBridgeHubCurrentBlock: BlockInfo;
 
+async function createRpcClient(endpoint: string) {
+  const provider = new WsProvider(endpoint) as ProviderInterface;
+  const rpcClient: any = await ApiPromise.create({
+    provider: provider,
+  });
+  await rpcClient.isReady;
+
+  return rpcClient;
+}
+
 async function getSafeXcmVersion(api: any) {
   return await api.query.PolkadotXcm.SafeXcmVersion.getValue();
 }
@@ -277,9 +287,7 @@ describe("XCM Over Bridges Tests", () => {
     const transferEvents: any[] =
       await polkadotAssetHubApi.event.Balances.Transfer.pull();
     expect(transferEvents.length).greaterThanOrEqual(1);
-    expect(transferEvents[transferEvents.length - 1].payload.amount).toBe(
-      100_000n,
-    );
+    expect(transferEvents.at(-1).payload.amount).toBe(100_000n);
 
     const xcmpMessageSentEvents: any[] =
       await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
@@ -309,23 +317,18 @@ describe("XCM Over Bridges Tests", () => {
       },
     });
 
-    const polkadotAssetHubProvider = new WsProvider(
-      POLKADOT_AH,
-    ) as ProviderInterface;
-    const polkadotAssetHubRpcApi: any = await ApiPromise.create({
-      provider: polkadotAssetHubProvider,
-    });
-    await polkadotAssetHubRpcApi.isReady;
-    const hrmpOutboundMessages = await checkHrmp({
-      api: polkadotAssetHubRpcApi,
+    const polkadotAssetHubRpcClient: any = await createRpcClient(POLKADOT_AH);
+    const hrmpOutboundMessagesOnAH = await checkHrmp({
+      api: polkadotAssetHubRpcClient,
     }).value();
-    // const hrmpOutboundMessages = await polkadotAssetHubRpcApi.query.parachainSystem.hrmpOutboundMessages();
+    // const hrmpOutboundMessagesOnAH =
+    //   await polkadotAssetHubRpcClient.query.parachainSystem.hrmpOutboundMessages();
     // console.log(
-    //   "HRMP Outbound Messages:",
-    //   JSON.stringify(hrmpOutboundMessages, toHuman, 2),
+    //   "HRMP Outbound Messages on PolkadotAssetHub:",
+    //   JSON.stringify(hrmpOutboundMessagesOnAH, toHuman, 2),
     // );
-    expect(hrmpOutboundMessages).toBeDefined();
-    const outboundMessages: any[] = hrmpOutboundMessages[0].data[1].v5;
+    expect(hrmpOutboundMessagesOnAH).toBeDefined();
+    const outboundMessages: any[] = hrmpOutboundMessagesOnAH[0].data[1].v5;
     const topicId = outboundMessages[outboundMessages.length - 1].setTopic;
 
     const polkadotBridgeHubNextBlock = await waitForNextBlock(
@@ -345,5 +348,16 @@ describe("XCM Over Bridges Tests", () => {
     expect(processedEvents.length).greaterThanOrEqual(1);
     const processedEvent = processedEvents[processedEvents.length - 1].payload;
     expect(processedEvent.id.asHex()).eq(topicId);
+
+    const messageKey = messageAcceptedEvents.at(-1).payload;
+    const outboundMessagesOnBH =
+      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+        messageKey,
+      );
+    console.log(
+      "Outbound Messages on PolkadotBridgeHub:",
+      JSON.stringify(outboundMessagesOnBH, toHuman, 2),
+    );
+    expect(outboundMessagesOnBH).toBeDefined();
   });
 });
