@@ -33,7 +33,7 @@ import {
 } from "@polkadot-labs/hdkd-helpers";
 import toHuman from "../../src/helper.js";
 
-const { checkHrmp } = withExpect(expect);
+const { checkHex, checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
 const MAX_RETRIES = 8; // Number of attempts to wait for block finalisation
 const KUSAMA_BH = "ws://localhost:8001";
@@ -234,10 +234,13 @@ describe("XCM Over Bridges Tests", () => {
       );
     const executionResult = dryRunResult.value.execution_result;
     if (!dryRunResult.success || !executionResult.success) {
-      console.error("Local Dry Run failed!");
-      console.log("Dry Run XCM:", JSON.stringify(decodedCall, toHuman, 2));
+      console.error("Local Dry Run failed on PolkadotAssetHub!");
       console.log(
-        "Dry Run Result:",
+        "Dry Run XCM on PolkadotAssetHub:",
+        JSON.stringify(decodedCall, toHuman, 2),
+      );
+      console.log(
+        "Dry Run Result on PolkadotAssetHub:",
         JSON.stringify(dryRunResult.value, toHuman, 2),
       );
     }
@@ -265,11 +268,11 @@ describe("XCM Over Bridges Tests", () => {
       if (dispatchError.type === "Module") {
         const modErr: any = dispatchError.value;
         console.error(
-          `Dispatch error in module: ${modErr.type} → ${modErr.value?.type}`,
+          `Dispatch error in module on PolkadotAssetHub: ${modErr.type} → ${modErr.value?.type}`,
         );
       } else {
         console.error(
-          "Dispatch error:",
+          "Dispatch error on PolkadotAssetHub:",
           JSON.stringify(dispatchError, toHuman, 2),
         );
       }
@@ -321,15 +324,13 @@ describe("XCM Over Bridges Tests", () => {
     const hrmpOutboundMessagesOnAH = await checkHrmp({
       api: polkadotAssetHubRpcClient,
     }).value();
-    // const hrmpOutboundMessagesOnAH =
-    //   await polkadotAssetHubRpcClient.query.parachainSystem.hrmpOutboundMessages();
     // console.log(
     //   "HRMP Outbound Messages on PolkadotAssetHub:",
     //   JSON.stringify(hrmpOutboundMessagesOnAH, toHuman, 2),
     // );
     expect(hrmpOutboundMessagesOnAH).toBeDefined();
-    const outboundMessages: any[] = hrmpOutboundMessagesOnAH[0].data[1].v5;
-    const topicId = outboundMessages[outboundMessages.length - 1].setTopic;
+    const outboundMessagesOnAH: any[] = hrmpOutboundMessagesOnAH[0].data[1].v5;
+    const topicId = outboundMessagesOnAH.at(-1).setTopic;
 
     const polkadotBridgeHubNextBlock = await waitForNextBlock(
       polkadotBridgeHubClient,
@@ -354,10 +355,30 @@ describe("XCM Over Bridges Tests", () => {
       await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
         messageKey,
       );
-    console.log(
-      "Outbound Messages on PolkadotBridgeHub:",
-      JSON.stringify(outboundMessagesOnBH, toHuman, 2),
-    );
+    // console.log(
+    //   "Outbound Messages on PolkadotBridgeHub:",
+    //   JSON.stringify(outboundMessagesOnBH, toHuman, 2),
+    // );
     expect(outboundMessagesOnBH).toBeDefined();
+
+    // const callDataOnBH = Binary.fromHex(outboundMessagesOnBH);
+    // const txOnBH: any = await polkadotBridgeHubApi.txFromCallData(callDataOnBH);
+    // const decodedCallOnBH: any = txOnBH.decodedCall;
+    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    const decodedCallOnBH: any = checkHex(outboundMessagesOnBH);
+    console.log(
+      "Dry Run XCM on PolkadotBridgeHub:",
+      JSON.stringify(decodedCallOnBH, toHuman, 2),
+    );
+    // const dryRunResultOnBH: any =
+    //   await polkadotBridgeHubApi.apis.DryRunApi.dry_run_call(
+    //     origin,
+    //     decodedCallOnBH,
+    //     XCM_VERSION,
+    //   );
+    // console.log(
+    //   "Dry Run Result on PolkadotBridgeHub:",
+    //   JSON.stringify(dryRunResultOnBH.value, toHuman, 2),
+    // );
   });
 });
