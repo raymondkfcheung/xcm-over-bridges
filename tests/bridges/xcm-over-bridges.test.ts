@@ -319,6 +319,13 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(outboundMessagesOnPBH).toBeDefined();
 
+    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    const rawValueOnPBH = polkadotBridgeHubRpcClient.registry.createType(
+      "Raw value on PolkadotBridgeHub:",
+      outboundMessagesOnPBH!.asHex(),
+    );
+    console.log(rawValueOnPBH.toHuman());
+
     const metadataOnPBH = await polkadotAssetHubApi.apis.Metadata.metadata();
     const extrinsicDecoderOnPBH = getExtrinsicDecoder(metadataOnPBH.asBytes());
     try {
