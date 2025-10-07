@@ -1,3 +1,6 @@
+import { createClient, type PolkadotClient } from "polkadot-api";
+import { getWsProvider } from "polkadot-api/ws-provider";
+import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { ApiPromise, WsProvider } from "@polkadot/api";
 import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
@@ -7,6 +10,10 @@ import {
   mnemonicToEntropy,
   type KeyPair,
 } from "@polkadot-labs/hdkd-helpers";
+
+export function createApiClient(endpoint: string): PolkadotClient {
+  return createClient(withPolkadotSdkCompat(getWsProvider(endpoint)));
+}
 
 export async function createRpcClient(endpoint: string): Promise<ApiPromise> {
   const provider = new WsProvider(endpoint) as ProviderInterface;

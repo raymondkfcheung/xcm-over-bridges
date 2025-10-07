@@ -1,15 +1,12 @@
 import { withExpect } from "@acala-network/chopsticks-testing";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
-  createClient,
   Binary,
   Enum,
   type BlockInfo,
   type PolkadotClient,
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
-import { getWsProvider } from "polkadot-api/ws-provider";
-import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import {
   KusamaBridgeHub,
   PolkadotAssetHub,
@@ -23,7 +20,12 @@ import {
   XcmVersionedLocation,
 } from "@polkadot-api/descriptors";
 import { ss58Address } from "@polkadot-labs/hdkd-helpers";
-import { createRpcClient, deriveAlice, toHuman } from "../../src/helper.js";
+import {
+  createApiClient,
+  createRpcClient,
+  deriveAlice,
+  toHuman,
+} from "../../src/helper.js";
 
 const { checkHex, checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
@@ -70,10 +72,6 @@ async function waitForNextBlock(
   }
 
   return currentBlock;
-}
-
-function createApiClient(endpoint: string) {
-  return createClient(withPolkadotSdkCompat(getWsProvider(endpoint)));
 }
 
 function supportsV5ForOtherChain(
