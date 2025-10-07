@@ -5,6 +5,7 @@ import {
   Enum,
   type BlockInfo,
   type PolkadotClient,
+  type TypedApi,
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import {
@@ -38,9 +39,9 @@ let kusamaBridgeHubClient: PolkadotClient;
 let polkadotAssetHubClient: PolkadotClient;
 let polkadotBridgeHubClient: PolkadotClient;
 
-let kusamaBridgeHubApi: any;
-let polkadotAssetHubApi: any;
-let polkadotBridgeHubApi: any;
+let kusamaBridgeHubApi: TypedApi<typeof KusamaBridgeHub>;
+let polkadotAssetHubApi: TypedApi<typeof PolkadotAssetHub>;
+let polkadotBridgeHubApi: TypedApi<typeof PolkadotBridgeHub>;
 
 let kusamaBridgeHubCurrentBlock: BlockInfo;
 let polkadotAssetHubCurrentBlock: BlockInfo;
