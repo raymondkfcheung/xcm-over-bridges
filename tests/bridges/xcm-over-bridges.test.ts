@@ -9,11 +9,6 @@ import {
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import {
-  getLookupFn,
-  getDynamicBuilder,
-} from "@polkadot-api/metadata-builders";
-import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
-import {
   KusamaBridgeHub,
   PolkadotAssetHub,
   PolkadotBridgeHub,
@@ -25,6 +20,12 @@ import {
   XcmVersionedAssets,
   XcmVersionedLocation,
 } from "@polkadot-api/descriptors";
+import {
+  getLookupFn,
+  getDynamicBuilder,
+} from "@polkadot-api/metadata-builders";
+import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
+import { getExtrinsicDecoder } from "@polkadot-api/tx-utils";
 import { ss58Address } from "@polkadot-labs/hdkd-helpers";
 import {
   createApiClient,
@@ -319,26 +320,50 @@ describe("XCM Over Bridges Tests", () => {
     expect(outboundMessagesOnPBH).toBeDefined();
 
     const metadataOnPBH = await polkadotAssetHubApi.apis.Metadata.metadata();
+    const extrinsicDecoderOnPBH = getExtrinsicDecoder(metadataOnPBH.asBytes());
+    try {
+      const calldataOnPBH = extrinsicDecoderOnPBH(
+        outboundMessagesOnPBH!.asHex(),
+      );
+      console.log(
+        "Calldata on PolkadotBridgeHub:",
+        JSON.stringify(calldataOnPBH, toHuman, 2),
+      );
+    } catch (error) {
+      console.error(error);
+    }
+
     const metadataAsValueOnPBH: any = decAnyMetadata(metadataOnPBH.asBytes())
       .metadata.value;
-    console.log(
-      "Metadata on PolkadotBridgeHub:",
-      JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
-    );
+    // console.log(
+    //   "Metadata on PolkadotBridgeHub:",
+    //   JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
+    // );
     const lookupOnPBH = getLookupFn(metadataAsValueOnPBH);
     const dynamicBuilderOnPBH = getDynamicBuilder(lookupOnPBH);
     const codecOnPBH = dynamicBuilderOnPBH.buildDefinition(359); // xcm::VersionedXcm
-    const decodedCallOnPBH = codecOnPBH.dec(outboundMessagesOnPBH!.asBytes());
+    try {
+      const decodedCallOnPBH = codecOnPBH.dec(outboundMessagesOnPBH!.asBytes());
+      console.log(
+        "Dry Run XCM on PolkadotBridgeHub:",
+        JSON.stringify(decodedCallOnPBH, toHuman, 2),
+      );
+    } catch (error) {
+      console.error(error);
+    }
 
-    // const txOnPBH: any = await polkadotBridgeHubApi.txFromCallData(
-    //   outboundMessagesOnPBH!,
-    // );
-    // const decodedCallOnPBH = txOnPBH.decodedCall;
-
-    console.log(
-      "Dry Run XCM on PolkadotBridgeHub:",
-      JSON.stringify(decodedCallOnPBH, toHuman, 2),
-    );
+    try {
+      const txOnPBH: any = await polkadotBridgeHubApi.txFromCallData(
+        outboundMessagesOnPBH!,
+      );
+      const decodedCallOnPBH = txOnPBH.decodedCall;
+      console.log(
+        "Dry Run XCM on PolkadotBridgeHub:",
+        JSON.stringify(decodedCallOnPBH, toHuman, 2),
+      );
+    } catch (error) {
+      console.error(error);
+    }
 
     // const dryRunResultOnPBH: any =
     //   await polkadotBridgeHubApi.apis.DryRunApi.dry_run_call(
