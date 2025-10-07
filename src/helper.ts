@@ -1,3 +1,5 @@
+import { ApiPromise, WsProvider } from "@polkadot/api";
+import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
 import {
   DEV_PHRASE,
@@ -5,6 +7,16 @@ import {
   mnemonicToEntropy,
   type KeyPair,
 } from "@polkadot-labs/hdkd-helpers";
+
+export async function createRpcClient(endpoint: string): Promise<ApiPromise> {
+  const provider = new WsProvider(endpoint) as ProviderInterface;
+  const rpcClient: any = await ApiPromise.create({
+    provider: provider,
+  });
+  await rpcClient.isReady;
+
+  return rpcClient;
+}
 
 export function deriveAlice(): KeyPair {
   const entropy = mnemonicToEntropy(DEV_PHRASE);

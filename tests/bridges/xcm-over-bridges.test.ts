@@ -10,8 +10,6 @@ import {
 import { getPolkadotSigner } from "polkadot-api/signer";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
-import { ApiPromise, WsProvider } from "@polkadot/api";
-import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 import {
   KusamaBridgeHub,
   PolkadotAssetHub,
@@ -25,7 +23,7 @@ import {
   XcmVersionedLocation,
 } from "@polkadot-api/descriptors";
 import { ss58Address } from "@polkadot-labs/hdkd-helpers";
-import { deriveAlice, toHuman } from "../../src/helper.js";
+import { createRpcClient, deriveAlice, toHuman } from "../../src/helper.js";
 
 const { checkHex, checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
@@ -45,16 +43,6 @@ let polkadotBridgeHubApi: any;
 let kusamaBridgeHubCurrentBlock: BlockInfo;
 let polkadotAssetHubCurrentBlock: BlockInfo;
 let polkadotBridgeHubCurrentBlock: BlockInfo;
-
-async function createRpcClient(endpoint: string) {
-  const provider = new WsProvider(endpoint) as ProviderInterface;
-  const rpcClient: any = await ApiPromise.create({
-    provider: provider,
-  });
-  await rpcClient.isReady;
-
-  return rpcClient;
-}
 
 async function getSafeXcmVersion(api: any) {
   return await api.query.PolkadotXcm.SafeXcmVersion.getValue();
@@ -307,7 +295,7 @@ describe("XCM Over Bridges Tests", () => {
       },
     });
 
-    const polkadotAssetHubRpcClient: any = await createRpcClient(POLKADOT_AH);
+    const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
     const hrmpOutboundMessagesOnAH = await checkHrmp({
       api: polkadotAssetHubRpcClient,
     }).value();
@@ -351,8 +339,11 @@ describe("XCM Over Bridges Tests", () => {
     // const callDataOnBH = Binary.fromHex(outboundMessagesOnBH);
     // const txOnBH: any = await polkadotBridgeHubApi.txFromCallData(callDataOnBH);
     // const decodedCallOnBH: any = txOnBH.decodedCall;
-    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
     const decodedCallOnBH: any = checkHex(outboundMessagesOnBH);
+    // const decodedCallOnBH: any = polkadotBridgeHubRpcClient
+    //   .createType("VersionedXcm", outboundMessagesOnBH)
+    //   .toJSON();
     console.log(
       "Dry Run XCM on PolkadotBridgeHub:",
       JSON.stringify(decodedCallOnBH, toHuman, 2),
