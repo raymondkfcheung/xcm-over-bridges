@@ -24,14 +24,8 @@ import {
   XcmVersionedAssets,
   XcmVersionedLocation,
 } from "@polkadot-api/descriptors";
-import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
-import {
-  DEV_PHRASE,
-  entropyToMiniSecret,
-  mnemonicToEntropy,
-  ss58Address,
-} from "@polkadot-labs/hdkd-helpers";
-import toHuman from "../../src/helper.js";
+import { ss58Address } from "@polkadot-labs/hdkd-helpers";
+import { deriveAlice, toHuman } from "../../src/helper.js";
 
 const { checkHex, checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
@@ -92,13 +86,6 @@ async function waitForNextBlock(
 
 function createApiClient(endpoint: string) {
   return createClient(withPolkadotSdkCompat(getWsProvider(endpoint)));
-}
-
-function deriveAlice() {
-  const entropy = mnemonicToEntropy(DEV_PHRASE);
-  const miniSecret = entropyToMiniSecret(entropy);
-  const derive = sr25519CreateDerive(miniSecret);
-  return derive("//Alice");
 }
 
 function supportsV5ForOtherChain(
