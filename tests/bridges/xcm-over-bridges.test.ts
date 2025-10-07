@@ -9,6 +9,12 @@ import {
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import {
+  getLookupFn,
+  getDynamicBuilder,
+} from "@polkadot-api/metadata-builders";
+import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
+import { getExtrinsicDecoder } from "@polkadot-api/tx-utils";
+import {
   KusamaBridgeHub,
   PolkadotAssetHub,
   PolkadotBridgeHub,
@@ -275,16 +281,13 @@ describe("XCM Over Bridges Tests", () => {
     });
 
     const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
-    const hrmpOutboundMessagesOnAH = await checkHrmp({
+    const hrmpOutboundMessagesOnPAH = await checkHrmp({
       api: polkadotAssetHubRpcClient,
     }).value();
-    // console.log(
-    //   "HRMP Outbound Messages on PolkadotAssetHub:",
-    //   JSON.stringify(hrmpOutboundMessagesOnAH, toHuman, 2),
-    // );
-    expect(hrmpOutboundMessagesOnAH).toBeDefined();
-    const outboundMessagesOnAH: any[] = hrmpOutboundMessagesOnAH[0].data[1].v5;
-    const topicId = outboundMessagesOnAH.at(-1).setTopic;
+    expect(hrmpOutboundMessagesOnPAH).toBeDefined();
+    const outboundMessagesOnPAH: any[] =
+      hrmpOutboundMessagesOnPAH[0].data[1].v5;
+    const topicId = outboundMessagesOnPAH.at(-1).setTopic;
 
     const polkadotBridgeHubNextBlock = await waitForNextBlock(
       polkadotBridgeHubClient,
@@ -305,27 +308,52 @@ describe("XCM Over Bridges Tests", () => {
     expect(processedEvent.id.asHex()).eq(topicId);
 
     const messageKey = messageAcceptedEvents.at(-1).payload;
-    const outboundMessagesOnBH =
+    const outboundMessagesOnPBH =
       await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
         messageKey,
       );
-    // console.log(
-    //   "Outbound Messages on PolkadotBridgeHub:",
-    //   JSON.stringify(outboundMessagesOnBH, toHuman, 2),
-    // );
-    expect(outboundMessagesOnBH).toBeDefined();
+    console.log(
+      "Outbound Messages on PolkadotBridgeHub:",
+      JSON.stringify(outboundMessagesOnPBH, toHuman, 2),
+    );
+    expect(outboundMessagesOnPBH).toBeDefined();
 
-    // const callDataOnBH = Binary.fromHex(outboundMessagesOnBH);
+    const metadataOnPBH = await polkadotAssetHubApi.apis.Metadata.metadata();
+    const metadataAsValueOnPBH: any = decAnyMetadata(metadataOnPBH.asBytes())
+      .metadata.value;
+    // console.log(
+    //   "Metadata on PolkadotBridgeHub:",
+    //   JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
+    // );
+    const lookupOnPBH = getLookupFn(metadataAsValueOnPBH);
+    const dynamicBuilderOnPBH = getDynamicBuilder(lookupOnPBH);
+    const codecOnPBH = dynamicBuilderOnPBH.buildDefinition(359); // xcm::VersionedXcm
+    const decodedCallOnPBH = codecOnPBH.dec(
+      outboundMessagesOnPBH!.asBytes().slice(1),
+    );
+    // const extrinsicDecoderOnPBH = getExtrinsicDecoder(metadataOnPBH.asBytes());
+    // console.log(
+    //   extrinsicDecoderOnPBH,
+    //   JSON.stringify(extrinsicDecoderOnPBH, toHuman, 2),
+    // );
+
+    // const decodedCallOnBBH = extrinsicDecoderOnPBH(
+    //   outboundMessagesOnPBH!.asHex(),
+    // );
+    // const callDataOnBBH = decodedCallOnBBH.callData;
+
+    // const callDataOnPBH = outboundMessagesOnPBH as Binary;
     // const txOnBH: any = await polkadotBridgeHubApi.txFromCallData(callDataOnBH);
-    // const decodedCallOnBH: any = txOnBH.decodedCall;
-    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    const decodedCallOnBH: any = checkHex(outboundMessagesOnBH);
-    // const decodedCallOnBH: any = polkadotBridgeHubRpcClient
-    //   .createType("VersionedXcm", outboundMessagesOnBH)
-    //   .toJSON();
+    // const decodedCallOnBBH: any = txOnBH.decodedCall;
+    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    // const decodedCallOnBH: any = checkHex(callDataOnBH.asHex());
+    // const decodedCallOnBH: any = polkadotBridgeHubRpcClient.createType(
+    //   "XcmVersionedXcm",
+    //   callDataOnBH,
+    // );
     console.log(
       "Dry Run XCM on PolkadotBridgeHub:",
-      JSON.stringify(decodedCallOnBH, toHuman, 2),
+      JSON.stringify(decodedCallOnPBH, toHuman, 2),
     );
     // const dryRunResultOnBH: any =
     //   await polkadotBridgeHubApi.apis.DryRunApi.dry_run_call(
