@@ -1,4 +1,8 @@
-import { createClient, type PolkadotClient } from "polkadot-api";
+import {
+  createClient,
+  type BlockInfo,
+  type PolkadotClient,
+} from "polkadot-api";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { ApiPromise, WsProvider } from "@polkadot/api";
@@ -10,6 +14,8 @@ import {
   mnemonicToEntropy,
   type KeyPair,
 } from "@polkadot-labs/hdkd-helpers";
+
+const MAX_RETRIES = 8; // Number of attempts to wait for block finalisation
 
 export function createApiClient(endpoint: string): PolkadotClient {
   return createClient(withPolkadotSdkCompat(getWsProvider(endpoint)));
@@ -43,3 +49,23 @@ export const toHuman = (_key: any, value: any) => {
 
   return value;
 };
+
+export async function waitForNextBlock(
+  client: PolkadotClient,
+  currentBlock: BlockInfo,
+): Promise<BlockInfo> {
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    const nextBlock = await client.getFinalizedBlock();
+    if (nextBlock.number > currentBlock.number) {
+      return nextBlock;
+    }
+
+    const waiting = 1_000 * 2 ** i;
+    console.log(
+      `Waiting ${waiting / 1_000}s for the next block to be finalised (${i + 1}/${MAX_RETRIES})...`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, waiting));
+  }
+
+  return currentBlock;
+}

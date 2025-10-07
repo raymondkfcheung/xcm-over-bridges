@@ -25,11 +25,11 @@ import {
   createRpcClient,
   deriveAlice,
   toHuman,
+  waitForNextBlock,
 } from "../../src/helper.js";
 
 const { checkHex, checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
-const MAX_RETRIES = 8; // Number of attempts to wait for block finalisation
 const KUSAMA_BH = "ws://localhost:8001";
 const POLKADOT_AH = "ws://localhost:8003";
 const POLKADOT_BH = "ws://localhost:8004";
@@ -52,26 +52,6 @@ async function getSafeXcmVersion(api: any) {
 
 async function getSupportedVersions(api: any) {
   return await api.query.PolkadotXcm.SupportedVersion.getEntries();
-}
-
-async function waitForNextBlock(
-  client: PolkadotClient,
-  currentBlock: BlockInfo,
-) {
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    const nextBlock = await client.getFinalizedBlock();
-    if (nextBlock.number > currentBlock.number) {
-      return nextBlock;
-    }
-
-    const waiting = 1_000 * 2 ** i;
-    console.log(
-      `Waiting ${waiting / 1_000}s for the next block to be finalised (${i + 1}/${MAX_RETRIES})...`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, waiting));
-  }
-
-  return currentBlock;
 }
 
 function supportsV5ForOtherChain(
