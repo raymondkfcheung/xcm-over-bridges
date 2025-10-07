@@ -13,7 +13,6 @@ import {
   getDynamicBuilder,
 } from "@polkadot-api/metadata-builders";
 import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
-import { getExtrinsicDecoder } from "@polkadot-api/tx-utils";
 import {
   KusamaBridgeHub,
   PolkadotAssetHub,
@@ -35,7 +34,7 @@ import {
   waitForNextBlock,
 } from "../../src/helper.js";
 
-const { checkHex, checkHrmp } = withExpect(expect);
+const { checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
 const KUSAMA_BH = "ws://localhost:8001";
 const POLKADOT_AH = "ws://localhost:8003";
@@ -314,56 +313,42 @@ describe("XCM Over Bridges Tests", () => {
       );
     console.log(
       "Outbound Messages on PolkadotBridgeHub:",
-      JSON.stringify(outboundMessagesOnPBH, toHuman, 2),
+      // outboundMessagesOnPBH?.asBytes(),
+      outboundMessagesOnPBH?.asHex(),
     );
     expect(outboundMessagesOnPBH).toBeDefined();
 
     const metadataOnPBH = await polkadotAssetHubApi.apis.Metadata.metadata();
     const metadataAsValueOnPBH: any = decAnyMetadata(metadataOnPBH.asBytes())
       .metadata.value;
-    // console.log(
-    //   "Metadata on PolkadotBridgeHub:",
-    //   JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
-    // );
+    console.log(
+      "Metadata on PolkadotBridgeHub:",
+      JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
+    );
     const lookupOnPBH = getLookupFn(metadataAsValueOnPBH);
     const dynamicBuilderOnPBH = getDynamicBuilder(lookupOnPBH);
     const codecOnPBH = dynamicBuilderOnPBH.buildDefinition(359); // xcm::VersionedXcm
-    const decodedCallOnPBH = codecOnPBH.dec(
-      outboundMessagesOnPBH!.asBytes().slice(1),
-    );
-    // const extrinsicDecoderOnPBH = getExtrinsicDecoder(metadataOnPBH.asBytes());
-    // console.log(
-    //   extrinsicDecoderOnPBH,
-    //   JSON.stringify(extrinsicDecoderOnPBH, toHuman, 2),
-    // );
+    const decodedCallOnPBH = codecOnPBH.dec(outboundMessagesOnPBH!.asBytes());
 
-    // const decodedCallOnBBH = extrinsicDecoderOnPBH(
-    //   outboundMessagesOnPBH!.asHex(),
+    // const txOnPBH: any = await polkadotBridgeHubApi.txFromCallData(
+    //   outboundMessagesOnPBH!,
     // );
-    // const callDataOnBBH = decodedCallOnBBH.callData;
+    // const decodedCallOnPBH = txOnPBH.decodedCall;
 
-    // const callDataOnPBH = outboundMessagesOnPBH as Binary;
-    // const txOnBH: any = await polkadotBridgeHubApi.txFromCallData(callDataOnBH);
-    // const decodedCallOnBBH: any = txOnBH.decodedCall;
-    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    // const decodedCallOnBH: any = checkHex(callDataOnBH.asHex());
-    // const decodedCallOnBH: any = polkadotBridgeHubRpcClient.createType(
-    //   "XcmVersionedXcm",
-    //   callDataOnBH,
-    // );
     console.log(
       "Dry Run XCM on PolkadotBridgeHub:",
       JSON.stringify(decodedCallOnPBH, toHuman, 2),
     );
-    // const dryRunResultOnBH: any =
+
+    // const dryRunResultOnPBH: any =
     //   await polkadotBridgeHubApi.apis.DryRunApi.dry_run_call(
     //     origin,
-    //     decodedCallOnBH,
+    //     decodedCallOnPBH,
     //     XCM_VERSION,
     //   );
     // console.log(
     //   "Dry Run Result on PolkadotBridgeHub:",
-    //   JSON.stringify(dryRunResultOnBH.value, toHuman, 2),
+    //   JSON.stringify(dryRunResultOnPBH.value, toHuman, 2),
     // );
   });
 });
