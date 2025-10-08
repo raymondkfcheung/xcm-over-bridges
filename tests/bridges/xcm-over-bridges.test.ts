@@ -19,19 +19,14 @@ import {
   XcmV5NetworkId,
   XcmVersionedAssets,
   XcmVersionedLocation,
+  XcmVersionedXcm,
 } from "@polkadot-api/descriptors";
-import {
-  getLookupFn,
-  getDynamicBuilder,
-} from "@polkadot-api/metadata-builders";
-import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
-import { getExtrinsicDecoder } from "@polkadot-api/tx-utils";
 import { ss58Address } from "@polkadot-labs/hdkd-helpers";
 import {
   createApiClient,
   createRpcClient,
   deriveAlice,
-  toHuman,
+  prettyString,
   waitForNextBlock,
 } from "../../src/helper.js";
 
@@ -128,7 +123,7 @@ describe("XCM Over Bridges Tests", () => {
       1002,
     );
     if (!kusamaSaysPolkadotBHv5) {
-      console.log(JSON.stringify(kusamaBHVers, toHuman, 2));
+      console.log(prettyString(kusamaBHVers));
     }
 
     const polkadotSaysKusamaBHv5 = supportsV5ForOtherChain(
@@ -137,7 +132,7 @@ describe("XCM Over Bridges Tests", () => {
       1002,
     );
     if (!polkadotSaysKusamaBHv5) {
-      console.log(JSON.stringify(polkadotBHVers, toHuman, 2));
+      console.log(prettyString(polkadotBHVers));
     }
 
     expect(kusamaSaysPolkadotBHv5).toBe(true);
@@ -197,11 +192,11 @@ describe("XCM Over Bridges Tests", () => {
       console.error("Local Dry Run failed on PolkadotAssetHub!");
       console.log(
         "Dry Run XCM on PolkadotAssetHub:",
-        JSON.stringify(decodedCall, toHuman, 2),
+        prettyString(decodedCall),
       );
       console.log(
         "Dry Run Result on PolkadotAssetHub:",
-        JSON.stringify(dryRunResult.value, toHuman, 2),
+        prettyString(dryRunResult.value),
       );
     }
     expect(dryRunResult.success).toBe(true);
@@ -209,7 +204,8 @@ describe("XCM Over Bridges Tests", () => {
 
     const forwarded_xcms: any[] = dryRunResult.value.forwarded_xcms;
     const destination = forwarded_xcms[0][0];
-    const remoteMessage = forwarded_xcms[0][1];
+    const remoteMessages: XcmVersionedXcm[] = forwarded_xcms[0][1];
+    const remoteMessage: any = remoteMessages[0];
     expect(destination.value).toStrictEqual({
       parents: 1,
       interior: {
@@ -220,7 +216,9 @@ describe("XCM Over Bridges Tests", () => {
         },
       },
     });
-    expect(remoteMessage).toHaveLength(1);
+    expect(remoteMessages).toHaveLength(1);
+    expect(remoteMessage.value.at(-2).value.xcm.at(-1).type).eq("SetTopic");
+    expect(remoteMessage.value.at(-1).type).eq("SetTopic");
 
     const extrinsic = await tx.signAndSubmit(aliceSigner);
     if (!extrinsic.ok) {
@@ -233,7 +231,7 @@ describe("XCM Over Bridges Tests", () => {
       } else {
         console.error(
           "Dispatch error on PolkadotAssetHub:",
-          JSON.stringify(dispatchError, toHuman, 2),
+          prettyString(dispatchError),
         );
       }
     }
@@ -312,75 +310,28 @@ describe("XCM Over Bridges Tests", () => {
       await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
         messageKey,
       );
-    console.log(
-      "Outbound Messages on PolkadotBridgeHub:",
-      // outboundMessagesOnPBH?.asBytes(),
-      outboundMessagesOnPBH?.asHex(),
-    );
     expect(outboundMessagesOnPBH).toBeDefined();
 
-    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    const rawValueOnPBH = polkadotBridgeHubRpcClient.registry.createType(
-      "Raw value on PolkadotBridgeHub:",
-      outboundMessagesOnPBH!.asHex(),
+    const assetHubAsSeenByBridgeHub = XcmVersionedLocation.V5({
+      parents: 1,
+      interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
+    });
+    const topicIdAsBinary = Binary.fromHex(topicId);
+    remoteMessage.value.at(-2).value.xcm.at(-1).value = topicIdAsBinary;
+    remoteMessage.value.at(-1).value = topicIdAsBinary;
+    console.log(
+      "Dry Run Remote Message on PolkadotBridgeHub:",
+      prettyString(remoteMessage),
     );
-    console.log(rawValueOnPBH.toHuman());
 
-    const metadataOnPBH = await polkadotAssetHubApi.apis.Metadata.metadata();
-    const extrinsicDecoderOnPBH = getExtrinsicDecoder(metadataOnPBH.asBytes());
-    try {
-      const calldataOnPBH = extrinsicDecoderOnPBH(
-        outboundMessagesOnPBH!.asHex(),
+    const dryRunResultOnPBH: any =
+      await polkadotBridgeHubApi.apis.DryRunApi.dry_run_xcm(
+        assetHubAsSeenByBridgeHub,
+        remoteMessage as XcmVersionedXcm,
       );
-      console.log(
-        "Calldata on PolkadotBridgeHub:",
-        JSON.stringify(calldataOnPBH, toHuman, 2),
-      );
-    } catch (error) {
-      console.error(error);
-    }
-
-    const metadataAsValueOnPBH: any = decAnyMetadata(metadataOnPBH.asBytes())
-      .metadata.value;
-    // console.log(
-    //   "Metadata on PolkadotBridgeHub:",
-    //   JSON.stringify(metadataAsValueOnPBH, toHuman, 2),
-    // );
-    const lookupOnPBH = getLookupFn(metadataAsValueOnPBH);
-    const dynamicBuilderOnPBH = getDynamicBuilder(lookupOnPBH);
-    const codecOnPBH = dynamicBuilderOnPBH.buildDefinition(359); // xcm::VersionedXcm
-    try {
-      const decodedCallOnPBH = codecOnPBH.dec(outboundMessagesOnPBH!.asBytes());
-      console.log(
-        "Dry Run XCM on PolkadotBridgeHub:",
-        JSON.stringify(decodedCallOnPBH, toHuman, 2),
-      );
-    } catch (error) {
-      console.error(error);
-    }
-
-    try {
-      const txOnPBH: any = await polkadotBridgeHubApi.txFromCallData(
-        outboundMessagesOnPBH!,
-      );
-      const decodedCallOnPBH = txOnPBH.decodedCall;
-      console.log(
-        "Dry Run XCM on PolkadotBridgeHub:",
-        JSON.stringify(decodedCallOnPBH, toHuman, 2),
-      );
-    } catch (error) {
-      console.error(error);
-    }
-
-    // const dryRunResultOnPBH: any =
-    //   await polkadotBridgeHubApi.apis.DryRunApi.dry_run_call(
-    //     origin,
-    //     decodedCallOnPBH,
-    //     XCM_VERSION,
-    //   );
-    // console.log(
-    //   "Dry Run Result on PolkadotBridgeHub:",
-    //   JSON.stringify(dryRunResultOnPBH.value, toHuman, 2),
-    // );
+    console.log(
+      "Dry Run Result on PolkadotBridgeHub:",
+      prettyString(dryRunResultOnPBH.value),
+    );
   });
 });
