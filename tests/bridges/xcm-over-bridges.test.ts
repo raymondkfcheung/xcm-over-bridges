@@ -5,6 +5,7 @@ import {
   Enum,
   type BlockInfo,
   type PolkadotClient,
+  type Transaction,
   type TypedApi,
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
@@ -149,7 +150,7 @@ describe("XCM Over Bridges Tests", () => {
     );
     const aliceAddress = ss58Address(alicePublicKey);
     const origin = Enum("system", Enum("Signed", aliceAddress));
-    const tx: any =
+    const tx: Transaction<any, string, string, any> =
       polkadotAssetHubApi.tx.PolkadotXcm.limited_reserve_transfer_assets({
         dest: XcmVersionedLocation.V5({
           parents: 2,
@@ -226,11 +227,11 @@ describe("XCM Over Bridges Tests", () => {
       if (dispatchError.type === "Module") {
         const modErr: any = dispatchError.value;
         console.error(
-          `Dispatch error in module on PolkadotAssetHub: ${modErr.type} → ${modErr.value?.type}`,
+          `Dispatch Error in Module on PolkadotAssetHub: ${modErr.type} → ${modErr.value?.type}`,
         );
       } else {
         console.error(
-          "Dispatch error on PolkadotAssetHub:",
+          "Dispatch Error on PolkadotAssetHub:",
           prettyString(dispatchError),
         );
       }
@@ -319,19 +320,61 @@ describe("XCM Over Bridges Tests", () => {
     const topicIdAsBinary = Binary.fromHex(topicId);
     remoteMessage.value.at(-2).value.xcm.at(-1).value = topicIdAsBinary;
     remoteMessage.value.at(-1).value = topicIdAsBinary;
-    console.log(
-      "Dry Run Remote Message on PolkadotBridgeHub:",
-      prettyString(remoteMessage),
-    );
 
     const dryRunResultOnPBH: any =
       await polkadotBridgeHubApi.apis.DryRunApi.dry_run_xcm(
         assetHubAsSeenByBridgeHub,
         remoteMessage as XcmVersionedXcm,
       );
-    console.log(
-      "Dry Run Result on PolkadotBridgeHub:",
-      prettyString(dryRunResultOnPBH.value),
-    );
+    const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
+    const executionSuccessOnPBH =
+      executionResultOnPBH?.success == true ||
+      executionResultOnPBH?.type === "Complete";
+    if (!dryRunResultOnPBH.success || !executionSuccessOnPBH) {
+      console.log(
+        "Dry Run Remote Message on PolkadotBridgeHub:",
+        prettyString(remoteMessage),
+      );
+      console.log(
+        "Dry Run Result on PolkadotBridgeHub:",
+        prettyString(dryRunResultOnPBH.value),
+      );
+    }
+    expect(dryRunResultOnPBH.success).toBe(true);
+    expect(executionSuccessOnPBH).toBe(true);
+
+    const weight: any =
+      await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        remoteMessage,
+      );
+    if (!weight.success) {
+      console.error(
+        "Failed to query XCM weight on PolkadotBridgeHub:",
+        weight.error,
+      );
+    }
+    expect(weight.success).toBe(true);
+
+    const txOnPBH: Transaction<any, string, string, any> =
+      polkadotBridgeHubApi.tx.PolkadotXcm.execute({
+        message: remoteMessage,
+        max_weight: weight.value,
+      });
+    const extrinsicOnPBH = await txOnPBH.signAndSubmit(aliceSigner);
+    if (!extrinsicOnPBH.ok) {
+      const dispatchError = extrinsicOnPBH.dispatchError;
+      if (dispatchError.type === "Module") {
+        const modErr: any = dispatchError.value;
+        console.error(
+          `Dispatch Error in Module on PolkadotBridgeHub: ${modErr.type} → ${modErr.value?.type}`,
+        );
+      } else {
+        console.error(
+          "Dispatch Error on PolkadotBridgeHub:",
+          prettyString(dispatchError),
+        );
+      }
+    }
+    expect(extrinsicOnPBH.ok).toBe(true);
   });
 });
