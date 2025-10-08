@@ -6,10 +6,11 @@ THIS_DIR=$(cd $(dirname $0); pwd)
 PROJECT_DIR=${THIS_DIR}/../../
 cd ${PROJECT_DIR}
 
-if [ ! -f "wasms/bridge-hub-polkadot_v1.9.1.wasm" ]; then
+if [ ! -f "wasms/bridge_hub_polkadot_runtime.compact.compressed.wasm" ]; then
     echo "Polkadot Bridge Hub WASM not found. Downloading..."
     mkdir -p wasms
-    wget https://github.com/polkadot-fellows/runtimes/releases/download/v1.9.1/bridge-hub-polkadot_runtime-v1009001.compact.compressed.wasm -O wasms/bridge-hub-polkadot_v1.9.1.wasm
+    wget https://github.com/polkadot-fellows/runtimes/releases/download/v1.9.1/compact-wasms.zip -O wasms/runtimes_v1.9.1-wasms.zip
+    unzip wasms/runtimes_v1.9.1-wasms.zip -d wasms/
 fi
 
 if [ ! -f "configs/polkadot-bridge-hub-override.yaml" ]; then

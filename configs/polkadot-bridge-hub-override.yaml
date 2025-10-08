@@ -2,7 +2,8 @@ endpoint: wss://polkadot-bridge-hub-rpc.polkadot.io
 mock-signature-host: true
 block: ${env.POLKADOT_BRIDGEHUB_BLOCK_NUMBER}
 db: ./db.sqlite
-wasm-override: wasms/bridge-hub-polkadot_v1.9.1.wasm
+runtime-log-level: 5
+wasm-override: wasms/bridge_hub_polkadot_runtime.compact.compressed.wasm
 
 import-storage:
   System:

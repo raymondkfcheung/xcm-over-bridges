@@ -1,9 +1,13 @@
 # Node/vitest files
-coverage
-node_modules
+coverage/
+node_modules/
 package-lock.json
 
 # Chopsticks/Papi files
-.papi
+.papi/
 **/__snapshots__
 db.sqlite*
+
+# Local test files
+wasms/
+*local*.*
