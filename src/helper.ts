@@ -38,6 +38,10 @@ export function deriveAlice(): KeyPair {
   return derive("//Alice");
 }
 
+export function prettyString(value: any): string {
+  return JSON.stringify(value, toHuman, 2);
+}
+
 export const toHuman = (_key: any, value: any) => {
   if (typeof value === "bigint") {
     return Number(value);
