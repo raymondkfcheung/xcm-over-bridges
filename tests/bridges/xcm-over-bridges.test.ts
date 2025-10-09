@@ -151,6 +151,7 @@ describe("XCM Over Bridges Tests", () => {
     const aliceAddress = ss58Address(alicePublicKey);
 
     // Replicate `test_dry_run_transfer_across_pk_bridge`
+    // https://github.com/paritytech/polkadot-sdk/pull/6002
     const origin = Enum("system", Enum("Signed", aliceAddress));
     const txOnPAH: Transaction<any, string, string, any> =
       polkadotAssetHubApi.tx.PolkadotXcm.limited_reserve_transfer_assets({
@@ -361,10 +362,17 @@ describe("XCM Over Bridges Tests", () => {
     // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
     // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
     const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    // Decode `universal_dest` with the first part as `StagingXcmV4Junction`.
+    const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
+    // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
+    // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
+    // Byte 1: Ignore
+    // Byte 2: VersionedInteriorLocation::V5
+    expect(outboundMessagesAsBytesOnPBH[2]).toBe(5);
+    // Byte 3: Junctions::X2
+    expect(outboundMessagesAsBytesOnPBH[3]).toBe(2);
     const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV4Junction",
-      outboundMessagesOnPBH!.asBytes().slice(3, 4),
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH[3],
     );
     expect(prettyString(universalDestX2_0)).eq(
       prettyString({
@@ -374,23 +382,40 @@ describe("XCM Over Bridges Tests", () => {
         },
       }),
     );
+    // Bytes 4: Junction::GlobalConsensus
+    // Bytes 5: NetworkId::Kusama
     const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV4Junction",
-      outboundMessagesOnPBH!.asBytes().slice(4, 6),
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH.slice(4, 6),
     );
+    expect(prettyString(universalDestX2_1)).eq(
+      prettyString({
+        globalConsensus: {
+          kusama: null,
+        },
+      }),
+    );
+    // Bytes 6: Junction::Parachain
+    // Bytes 7-8: compact(1000) => ParaId 1000
     const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV4Junction",
-      outboundMessagesOnPBH!.asBytes().slice(6, 9),
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH.slice(6, 9),
+    );
+    expect(prettyString(universalDestX2_2)).eq(
+      prettyString({
+        parachain: 1000,
+      }),
     );
     // Decode `message` with the rest as `XcmVersionedXcm`.
+    // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
     const bridgeMessageMessage = polkadotBridgeHubRpcClient.createType(
       "XcmVersionedXcm",
-      outboundMessagesOnPBH!.asBytes().slice(9),
+      outboundMessagesAsBytesOnPBH.slice(9),
     );
 
     const bridgeMessageOnPBH = {
       universal_dest: {
-        v4: {
+        v5: {
           x2: [universalDestX2_1, universalDestX2_2],
         },
       },
