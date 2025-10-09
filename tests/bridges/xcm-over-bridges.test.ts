@@ -363,17 +363,6 @@ describe("XCM Over Bridges Tests", () => {
     // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
     const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
 
-    // https://papi.how/typed-codecs/
-    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
-    const bridgeMessageCodecOnPBH =
-      codecsOnPBH.query.BridgeKusamaMessages.OutboundMessages.value;
-    const decodedOnPBH = bridgeMessageCodecOnPBH.dec(
-      outboundMessagesAsBytesOnPBH,
-    );
-    expect(decodedOnPBH.asHex()).toEqual(
-      Binary.fromBytes(outboundMessagesAsBytesOnPBH.slice(2)).asHex(),
-    );
-
     // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
     const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
     // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
@@ -434,26 +423,28 @@ describe("XCM Over Bridges Tests", () => {
     //   prettyString(bridgeMessageOnPBH),
     // );
 
-    // const calldataOnPBH = Binary.fromBytes(
-    //   outboundMessagesAsBytesOnPBH.slice(9),
-    // );
-    // const txOnPBH: Transaction<any, string, string, any> =
-    //   await polkadotBridgeHubApi.txFromCallData(calldataOnPBH);
-    // const messageOnPBH = txOnPBH.decodedCall;
-    // console.log(
-    //   "Bridge Message (message) on PolkadotBridgeHub:",
-    //   prettyString(messageOnPBH),
-    // );
-    // const weight: any =
-    //   await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
-    //     bridgeMessageMessage.toPrimitive(),
-    //   );
-    // if (!weight.success) {
-    //   console.error(
-    //     "Failed to query XCM weight on PolkadotBridgeHub:",
-    //     weight.error,
-    //   );
-    // }
+    // https://papi.how/typed-codecs/
+    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
+    const messagesOnPBH =
+      codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
+        outboundMessagesAsBytesOnPBH.slice(9),
+      );
+    expect(messagesOnPBH).toHaveLength(1);
+
+    const messageOnPBH = messagesOnPBH[0];
+    const weightOnPBH: any =
+      await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        messageOnPBH,
+      );
+    if (!weightOnPBH.success) {
+      console.error(
+        "Failed to query XCM weight on PolkadotBridgeHub:",
+        prettyString(weightOnPBH),
+        prettyString(messageOnPBH),
+      );
+    }
+    // xcm::weight  TRACE: [2033] WeightInfoBounds message=Xcm([UniversalOrigin(GlobalConsensus(Polkadot)), DescendOrigin(X1([Parachain(1000)])), ReserveAssetDeposited(Assets([Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }])), ClearOrigin, BuyExecution { fees: Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }, weight_limit: Unlimited }, DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, 39, 210, 86, 99, 16, 101, 236, 171, 240, 197, 14, 2, 85, 30, 92, 83, 66, 184, 102, 148, 134, 193, 229, 102, 252, 191, 132, 127] }]) } }, SetTopic([36, 230, 219, 172, 131, 142, 170, 85, 115, 58, 151, 4, 75, 70, 173, 104, 44, 97, 140, 101, 36, 1, 150, 51, 2, 47, 47, 105, 44, 197, 54, 100])])
+    // xcm::weight  DEBUG: [2033] Weight calculation failed for message error=InstructionError { index: 1, error: Overflow } instructions_left=98 message_length=7
     // expect(weight.success).toBe(true);
 
     // const txOnPBH: Transaction<any, string, string, any> =
@@ -477,7 +468,5 @@ describe("XCM Over Bridges Tests", () => {
     //   }
     // }
     // expect(extrinsicOnPBH.ok).toBe(true);
-    // runtime::bridge-xcm  ERROR: [32] No opened bridge for requested bridge_origin_relative_location: Location { parents: 0, interior: X1([AccountId32 { network: Some(Polkadot), id: [212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125] }]) } and bridge_destination_universal_location: X2([GlobalConsensus(Kusama), Parachain(1000)])
-    // xcm::pallet_xcm::execute  ERROR: [32] XCM execution failed with error error=InstructionError { index: 3, error: Unroutable }
   });
 });
