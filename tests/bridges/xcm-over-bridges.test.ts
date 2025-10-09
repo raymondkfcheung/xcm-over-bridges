@@ -149,8 +149,10 @@ describe("XCM Over Bridges Tests", () => {
       alice.sign,
     );
     const aliceAddress = ss58Address(alicePublicKey);
+
+    // Replicate `test_dry_run_transfer_across_pk_bridge`
     const origin = Enum("system", Enum("Signed", aliceAddress));
-    const tx: Transaction<any, string, string, any> =
+    const txOnPAH: Transaction<any, string, string, any> =
       polkadotAssetHubApi.tx.PolkadotXcm.limited_reserve_transfer_assets({
         dest: XcmVersionedLocation.V5({
           parents: 2,
@@ -181,32 +183,31 @@ describe("XCM Over Bridges Tests", () => {
         fee_asset_item: 0,
         weight_limit: XcmV3WeightLimit.Unlimited(),
       });
-    const decodedCall: any = tx.decodedCall;
-    const dryRunResult: any =
+    const decodedCallOnPAH: any = txOnPAH.decodedCall;
+    const dryRunResultOnPAH: any =
       await polkadotAssetHubApi.apis.DryRunApi.dry_run_call(
         origin,
-        decodedCall,
+        decodedCallOnPAH,
         XCM_VERSION,
       );
-    const executionResult = dryRunResult.value.execution_result;
-    if (!dryRunResult.success || !executionResult.success) {
+    const executionResultOnPAH = dryRunResultOnPAH.value.execution_result;
+    if (!dryRunResultOnPAH.success || !executionResultOnPAH.success) {
       console.error("Local Dry Run failed on PolkadotAssetHub!");
       console.log(
         "Dry Run XCM on PolkadotAssetHub:",
-        prettyString(decodedCall),
+        prettyString(decodedCallOnPAH),
       );
       console.log(
         "Dry Run Result on PolkadotAssetHub:",
-        prettyString(dryRunResult.value),
+        prettyString(dryRunResultOnPAH.value),
       );
     }
-    expect(dryRunResult.success).toBe(true);
-    expect(executionResult.success).toBe(true);
+    expect(dryRunResultOnPAH.success).toBe(true);
+    expect(executionResultOnPAH.success).toBe(true);
 
-    const forwarded_xcms: any[] = dryRunResult.value.forwarded_xcms;
-    const destination = forwarded_xcms[0][0];
-    const remoteMessages: XcmVersionedXcm[] = forwarded_xcms[0][1];
-    const remoteMessage: any = remoteMessages[0];
+    const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
+    const destination = forwardedXcms[0][0];
+    const remoteMessages: XcmVersionedXcm[] = forwardedXcms[0][1];
     expect(destination.value).toStrictEqual({
       parents: 1,
       interior: {
@@ -218,12 +219,55 @@ describe("XCM Over Bridges Tests", () => {
       },
     });
     expect(remoteMessages).toHaveLength(1);
-    expect(remoteMessage.value.at(-2).value.xcm.at(-1).type).eq("SetTopic");
+    const remoteMessage: any = remoteMessages[0];
+    const exportMessage = remoteMessage.value.at(-2);
+    expect(exportMessage.type).eq("ExportMessage");
+    expect(exportMessage.value.network.type).eq("Kusama");
+    expect(exportMessage.value.xcm.at(-1).type).eq("SetTopic");
     expect(remoteMessage.value.at(-1).type).eq("SetTopic");
 
-    const extrinsic = await tx.signAndSubmit(aliceSigner);
-    if (!extrinsic.ok) {
-      const dispatchError = extrinsic.dispatchError;
+    const assetHubAsSeenByBridgeHub = XcmVersionedLocation.V5({
+      parents: 1,
+      interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
+    });
+
+    const dryRunResultOnPBH: any =
+      await polkadotBridgeHubApi.apis.DryRunApi.dry_run_xcm(
+        assetHubAsSeenByBridgeHub,
+        remoteMessage as XcmVersionedXcm,
+      );
+    const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
+    const executionSuccessOnPBH =
+      executionResultOnPBH?.success == true ||
+      executionResultOnPBH?.type === "Complete";
+    if (!dryRunResultOnPBH.success || !executionSuccessOnPBH) {
+      console.log(
+        "Dry Run Remote Message on PolkadotBridgeHub:",
+        prettyString(remoteMessage),
+      );
+      console.log(
+        "Dry Run Result on PolkadotBridgeHub:",
+        prettyString(dryRunResultOnPBH.value),
+      );
+    }
+    expect(dryRunResultOnPBH.success).toBe(true);
+    expect(executionSuccessOnPBH).toBe(true);
+    const dryRunEmittedEventsOnPBH: any[] =
+      dryRunResultOnPBH.value.emitted_events;
+    // console.log(
+    //   "Dry Run Emitted Events on PolkadotBridgeHub:",
+    //   prettyString(dryRunEmittedEventsOnPBH),
+    // );
+    const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
+      (event) =>
+        event.type === "BridgeKusamaMessages" &&
+        event.value.type === "MessageAccepted",
+    );
+    expect(dryRunMessageAcceptedEventOnPBH).toBeDefined();
+
+    const extrinsicOnPAH = await txOnPAH.signAndSubmit(aliceSigner);
+    if (!extrinsicOnPAH.ok) {
+      const dispatchError = extrinsicOnPAH.dispatchError;
       if (dispatchError.type === "Module") {
         const modErr: any = dispatchError.value;
         console.error(
@@ -236,7 +280,7 @@ describe("XCM Over Bridges Tests", () => {
         );
       }
     }
-    expect(extrinsic.ok).toBe(true);
+    expect(extrinsicOnPAH.ok).toBe(true);
 
     const polkadotAssetHubNextBlock = await waitForNextBlock(
       polkadotAssetHubClient,
@@ -313,68 +357,84 @@ describe("XCM Over Bridges Tests", () => {
       );
     expect(outboundMessagesOnPBH).toBeDefined();
 
-    const assetHubAsSeenByBridgeHub = XcmVersionedLocation.V5({
-      parents: 1,
-      interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
-    });
-    const topicIdAsBinary = Binary.fromHex(topicId);
-    remoteMessage.value.at(-2).value.xcm.at(-1).value = topicIdAsBinary;
-    remoteMessage.value.at(-1).value = topicIdAsBinary;
+    // Hack: `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
+    // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
+    // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
+    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    // Decode `universal_dest` with the first part as `StagingXcmV4Junction`.
+    const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV4Junction",
+      outboundMessagesOnPBH!.asBytes().slice(3, 4),
+    );
+    expect(prettyString(universalDestX2_0)).eq(
+      prettyString({
+        accountIndex64: {
+          network: null,
+          index: 0,
+        },
+      }),
+    );
+    const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV4Junction",
+      outboundMessagesOnPBH!.asBytes().slice(4, 6),
+    );
+    const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV4Junction",
+      outboundMessagesOnPBH!.asBytes().slice(6, 9),
+    );
+    // Decode `message` with the rest as `XcmVersionedXcm`.
+    const bridgeMessageMessage = polkadotBridgeHubRpcClient.createType(
+      "XcmVersionedXcm",
+      outboundMessagesOnPBH!.asBytes().slice(9),
+    );
 
-    const dryRunResultOnPBH: any =
-      await polkadotBridgeHubApi.apis.DryRunApi.dry_run_xcm(
-        assetHubAsSeenByBridgeHub,
-        remoteMessage as XcmVersionedXcm,
-      );
-    const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
-    const executionSuccessOnPBH =
-      executionResultOnPBH?.success == true ||
-      executionResultOnPBH?.type === "Complete";
-    if (!dryRunResultOnPBH.success || !executionSuccessOnPBH) {
-      console.log(
-        "Dry Run Remote Message on PolkadotBridgeHub:",
-        prettyString(remoteMessage),
-      );
-      console.log(
-        "Dry Run Result on PolkadotBridgeHub:",
-        prettyString(dryRunResultOnPBH.value),
-      );
-    }
-    expect(dryRunResultOnPBH.success).toBe(true);
-    expect(executionSuccessOnPBH).toBe(true);
+    const bridgeMessageOnPBH = {
+      universal_dest: {
+        v4: {
+          x2: [universalDestX2_1, universalDestX2_2],
+        },
+      },
+      message: bridgeMessageMessage,
+    };
+    console.log(
+      "Bridge Message on PolkadotBridgeHub:",
+      prettyString(bridgeMessageOnPBH),
+    );
 
-    const weight: any =
-      await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
-        remoteMessage,
-      );
-    if (!weight.success) {
-      console.error(
-        "Failed to query XCM weight on PolkadotBridgeHub:",
-        weight.error,
-      );
-    }
-    expect(weight.success).toBe(true);
+    // const weight: any =
+    //   await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
+    //     remoteMessage,
+    //   );
+    // if (!weight.success) {
+    //   console.error(
+    //     "Failed to query XCM weight on PolkadotBridgeHub:",
+    //     weight.error,
+    //   );
+    // }
+    // expect(weight.success).toBe(true);
 
-    const txOnPBH: Transaction<any, string, string, any> =
-      polkadotBridgeHubApi.tx.PolkadotXcm.execute({
-        message: remoteMessage,
-        max_weight: weight.value,
-      });
-    const extrinsicOnPBH = await txOnPBH.signAndSubmit(aliceSigner);
-    if (!extrinsicOnPBH.ok) {
-      const dispatchError = extrinsicOnPBH.dispatchError;
-      if (dispatchError.type === "Module") {
-        const modErr: any = dispatchError.value;
-        console.error(
-          `Dispatch Error in Module on PolkadotBridgeHub: ${modErr.type} → ${modErr.value?.type}`,
-        );
-      } else {
-        console.error(
-          "Dispatch Error on PolkadotBridgeHub:",
-          prettyString(dispatchError),
-        );
-      }
-    }
-    expect(extrinsicOnPBH.ok).toBe(true);
+    // const txOnPBH: Transaction<any, string, string, any> =
+    //   polkadotBridgeHubApi.tx.PolkadotXcm.execute({
+    //     message: remoteMessage,
+    //     max_weight: weight.value,
+    //   });
+    // const extrinsicOnPBH = await txOnPBH.signAndSubmit(aliceSigner);
+    // if (!extrinsicOnPBH.ok) {
+    //   const dispatchError = extrinsicOnPBH.dispatchError;
+    //   if (dispatchError.type === "Module") {
+    //     const modErr: any = dispatchError.value;
+    //     console.error(
+    //       `Dispatch Error in Module on PolkadotBridgeHub: ${modErr.type} → ${modErr.value?.type}`,
+    //     );
+    //   } else {
+    //     console.error(
+    //       "Dispatch Error on PolkadotBridgeHub:",
+    //       prettyString(dispatchError),
+    //     );
+    //   }
+    // }
+    // expect(extrinsicOnPBH.ok).toBe(true);
+    // runtime::bridge-xcm  ERROR: [32] No opened bridge for requested bridge_origin_relative_location: Location { parents: 0, interior: X1([AccountId32 { network: Some(Polkadot), id: [212, 53, 147, 199, 21, 253, 211, 28, 97, 20, 26, 189, 4, 169, 159, 214, 130, 44, 133, 88, 133, 76, 205, 227, 154, 86, 132, 231, 165, 109, 162, 125] }]) } and bridge_destination_universal_location: X2([GlobalConsensus(Kusama), Parachain(1000)])
+    // xcm::pallet_xcm::execute  ERROR: [32] XCM execution failed with error error=InstructionError { index: 3, error: Unroutable }
   });
 });
