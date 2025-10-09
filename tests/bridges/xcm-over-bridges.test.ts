@@ -1,6 +1,7 @@
 import { withExpect } from "@acala-network/chopsticks-testing";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
+  getTypedCodecs,
   Binary,
   Enum,
   type BlockInfo,
@@ -209,7 +210,7 @@ describe("XCM Over Bridges Tests", () => {
     const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
     const destination = forwardedXcms[0][0];
     const remoteMessages: XcmVersionedXcm[] = forwardedXcms[0][1];
-    expect(destination.value).toStrictEqual({
+    expect(destination.value).toEqual({
       parents: 1,
       interior: {
         type: "X1",
@@ -222,10 +223,10 @@ describe("XCM Over Bridges Tests", () => {
     expect(remoteMessages).toHaveLength(1);
     const remoteMessage: any = remoteMessages[0];
     const exportMessage = remoteMessage.value.at(-2);
-    expect(exportMessage.type).eq("ExportMessage");
-    expect(exportMessage.value.network.type).eq("Kusama");
-    expect(exportMessage.value.xcm.at(-1).type).eq("SetTopic");
-    expect(remoteMessage.value.at(-1).type).eq("SetTopic");
+    expect(exportMessage.type).toEqual("ExportMessage");
+    expect(exportMessage.value.network.type).toEqual("Kusama");
+    expect(exportMessage.value.xcm.at(-1).type).toEqual("SetTopic");
+    expect(remoteMessage.value.at(-1).type).toEqual("SetTopic");
 
     const assetHubAsSeenByBridgeHub = XcmVersionedLocation.V5({
       parents: 1,
@@ -304,7 +305,7 @@ describe("XCM Over Bridges Tests", () => {
       await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
     expect(sentEvents.length).greaterThanOrEqual(1);
     const sentEvent = sentEvents[sentEvents.length - 1].payload;
-    expect(sentEvent.destination).toStrictEqual({
+    expect(sentEvent.destination).toEqual({
       parents: 2,
       interior: {
         type: "X2",
@@ -349,7 +350,7 @@ describe("XCM Over Bridges Tests", () => {
       await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
     expect(processedEvents.length).greaterThanOrEqual(1);
     const processedEvent = processedEvents[processedEvents.length - 1].payload;
-    expect(processedEvent.id.asHex()).eq(topicId);
+    expect(processedEvent.id.asHex()).toEqual(topicId);
 
     const messageKey = messageAcceptedEvents.at(-1).payload;
     const outboundMessagesOnPBH =
@@ -358,11 +359,23 @@ describe("XCM Over Bridges Tests", () => {
       );
     expect(outboundMessagesOnPBH).toBeDefined();
 
-    // Hack: `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
+    // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
     // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
+    const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
+
+    // https://papi.how/typed-codecs/
+    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
+    const bridgeMessageCodecOnPBH =
+      codecsOnPBH.query.BridgeKusamaMessages.OutboundMessages.value;
+    const decodedOnPBH = bridgeMessageCodecOnPBH.dec(
+      outboundMessagesAsBytesOnPBH,
+    );
+    expect(decodedOnPBH.asHex()).toEqual(
+      Binary.fromBytes(outboundMessagesAsBytesOnPBH.slice(2)).asHex(),
+    );
+
     // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
     const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
     // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
     // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
     // Byte 1: Ignore
@@ -374,61 +387,66 @@ describe("XCM Over Bridges Tests", () => {
       "StagingXcmV5Junction",
       outboundMessagesAsBytesOnPBH[3],
     );
-    expect(prettyString(universalDestX2_0)).eq(
-      prettyString({
-        accountIndex64: {
-          network: null,
-          index: 0,
-        },
-      }),
-    );
+    expect(universalDestX2_0.toJSON()).toEqual({
+      accountIndex64: {
+        network: null,
+        index: 0,
+      },
+    });
     // Bytes 4: Junction::GlobalConsensus
     // Bytes 5: NetworkId::Kusama
     const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
       "StagingXcmV5Junction",
       outboundMessagesAsBytesOnPBH.slice(4, 6),
     );
-    expect(prettyString(universalDestX2_1)).eq(
-      prettyString({
-        globalConsensus: {
-          kusama: null,
-        },
-      }),
-    );
+    expect(universalDestX2_1.toJSON()).toEqual({
+      globalConsensus: {
+        kusama: null,
+      },
+    });
     // Bytes 6: Junction::Parachain
     // Bytes 7-8: compact(1000) => ParaId 1000
     const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
       "StagingXcmV5Junction",
       outboundMessagesAsBytesOnPBH.slice(6, 9),
     );
-    expect(prettyString(universalDestX2_2)).eq(
-      prettyString({
-        parachain: 1000,
-      }),
-    );
+    expect(universalDestX2_2.toJSON()).toEqual({
+      parachain: 1000,
+    });
     // Decode `message` with the rest as `XcmVersionedXcm`.
     // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
     const bridgeMessageMessage = polkadotBridgeHubRpcClient.createType(
       "XcmVersionedXcm",
       outboundMessagesAsBytesOnPBH.slice(9),
     );
+    expect(bridgeMessageMessage.toJSON()).toBeDefined();
 
-    const bridgeMessageOnPBH = {
-      universal_dest: {
-        v5: {
-          x2: [universalDestX2_1, universalDestX2_2],
-        },
-      },
-      message: bridgeMessageMessage,
-    };
-    console.log(
-      "Bridge Message on PolkadotBridgeHub:",
-      prettyString(bridgeMessageOnPBH),
-    );
+    // const bridgeMessageOnPBH = {
+    //   universal_dest: {
+    //     v5: {
+    //       x2: [universalDestX2_1.toJSON(), universalDestX2_2.toJSON()],
+    //     },
+    //   },
+    //   message: bridgeMessageMessage.toJSON(),
+    // };
+    // console.log(
+    //   "Bridge Message on PolkadotBridgeHub:",
+    //   prettyString(bridgeMessageOnPBH),
+    // );
 
+    // const calldataOnPBH = Binary.fromBytes(
+    //   outboundMessagesAsBytesOnPBH.slice(9),
+    // );
+    // const txOnPBH: Transaction<any, string, string, any> =
+    //   await polkadotBridgeHubApi.txFromCallData(calldataOnPBH);
+    // const messageOnPBH = txOnPBH.decodedCall;
+    // console.log(
+    //   "Bridge Message (message) on PolkadotBridgeHub:",
+    //   prettyString(messageOnPBH),
+    // );
     // const weight: any =
     //   await polkadotBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
-    //     remoteMessage,
+    //     bridgeMessageMessage.toPrimitive(),
     //   );
     // if (!weight.success) {
     //   console.error(
