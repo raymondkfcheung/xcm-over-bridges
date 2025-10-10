@@ -412,50 +412,59 @@ describe("XCM Over Bridges Tests", () => {
     //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, ...] }]) } },
     //   SetTopic([36, 230, 219, 172, ...])
     // ])
-    const metadataOnKBH: any = decAnyMetadata(
-      (await kusamaBridgeHubApi.apis.Metadata.metadata()).asBytes(),
+    const metadataOnK: any = decAnyMetadata(
+      (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
     ).metadata.value;
-    const palletsOnKBH: any = metadataOnKBH.pallets;
-    const xcmOverBridgeHubPolkadot: any = palletsOnKBH.find(
-      (p: any) => p.name == "XcmOverBridgeHubPolkadot",
+    const palletsOnK: any = metadataOnK.pallets;
+    const toPolkadotRouter: any = palletsOnK.find(
+      (p: any) => p.name == "ToPolkadotXcmRouter",
     );
-    expect(xcmOverBridgeHubPolkadot).toBeDefined();
+    expect(toPolkadotRouter).toBeDefined();
 
     bridgeMessage.value = bridgeMessage.value.slice(1);
+    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
+    //   XcmV5Junctions.X1(XcmV5Junction.PalletInstance(toPolkadotRouter.index)),
+    // );
     bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
-      XcmV5Junctions.X1(
-        XcmV5Junction.PalletInstance(xcmOverBridgeHubPolkadot.index),
-      ),
+      XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
     );
-    // console.log(prettyString(bridgeMessage));
+    const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
+      XcmV5Instruction,
+      { type: "ReserveAssetDeposited" }
+    >;
+    (reserveAssetDeposited.value[0] as any).id.interior = XcmV5Junctions.X2([
+      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+      XcmV5Junction.Parachain(1000),
+    ]);
+    console.log(prettyString(bridgeMessage));
 
     const weightForBM: any =
-      await kusamaBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
+      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
         bridgeMessage,
       );
     if (!weightForBM.success) {
       console.error(
-        "Failed to query XCM weight on KusamaBridgeHub:",
+        "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
         prettyString(weightForBM),
       );
     }
     console.log(prettyString(weightForBM));
-    // expect(weightForBM.success).toBe(true);
+    expect(weightForBM.success).toBe(true);
     // Error when querying XCM weight error=InstructionError { index: 1, error: Overflow }
 
-    // const txForBM: Transaction<any, string, string, any> =
-    //   kusamaBridgeHubApi.tx.PolkadotXcm.execute({
-    //     message: bridgeMessage,
-    //     max_weight: weightForBM.value,
-    //   });
-    // const extrinsicForBM = await signAndSubmit(
-    //   "KusamaBridgeHub",
-    //   txForBM,
-    //   aliceSigner,
-    // );
-    // console.log(prettyString(extrinsicForBM));
+    const txForBM: Transaction<any, string, string, any> =
+      kusamaAssetHubApi.tx.PolkadotXcm.execute({
+        message: bridgeMessage,
+        max_weight: weightForBM.value,
+      });
+    const extrinsicForBM = await signAndSubmit(
+      "Kusama Asset/Bridge Hub",
+      txForBM,
+      aliceSigner,
+    );
+    console.log(prettyString(extrinsicForBM));
     // expect(extrinsicForBM.ok).toBe(true);
-    // XCM execution failed with error error=InstructionError { index: 0, error: WeightLimitReached(Weight { ref_time: 18446744073709551615, proof_size: 18446744073709551615 }) }
+    // XCM execution failed at instruction index=1 error=UntrustedReserveLocation
 
     // const kusamaBridgeHubNextBlock = await waitForNextBlock(
     //   kusamaBridgeHubClient,
