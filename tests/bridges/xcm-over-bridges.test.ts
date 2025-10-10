@@ -388,7 +388,7 @@ describe("XCM Over Bridges Tests", () => {
     // https://papi.how/typed-codecs/
     const codecsOnKBH = await getTypedCodecs(KusamaBridgeHub);
     const bridgeMessageOnPBH =
-      codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
+      codecsOnKBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
         outboundMessagesAsBytesOnPBH.slice(9),
       );
     expect(bridgeMessageOnPBH).toHaveLength(1);
