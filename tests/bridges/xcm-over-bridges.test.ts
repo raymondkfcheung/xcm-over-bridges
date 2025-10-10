@@ -421,9 +421,13 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(toPolkadotRouter).toBeDefined();
 
-    // const toPolkadot = XcmV5Junctions.X1(
-    //   XcmV5Junction.PalletInstance(toPolkadotRouter.index),
-    // );
+    const toPolkadot = XcmV5Junctions.X1(
+      XcmV5Junction.PalletInstance(toPolkadotRouter.index),
+    );
+    const interior = XcmV5Junctions.X2([
+      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+      XcmV5Junction.Parachain(1000),
+    ]);
     // bridgeMessage.value = [
     //   XcmV5Instruction.DescendOrigin(toPolkadot),
     //   ...(bridgeMessage.value as XcmV5Instruction[]),
@@ -433,23 +437,25 @@ describe("XCM Over Bridges Tests", () => {
     // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
     //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
     // );
-    // const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
-    //   XcmV5Instruction,
-    //   { type: "ReserveAssetDeposited" }
-    // >;
-    // (reserveAssetDeposited.value[0] as any).id.interior = XcmV5Junctions.X2([
-    //   XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-    //   XcmV5Junction.Parachain(1000),
-    // ]);
-    // console.log(prettyString(bridgeMessage));
-
     bridgeMessage.value = bridgeMessage.value.slice(2);
+    const reserveAssetDeposited = bridgeMessage.value[0] as Extract<
+      XcmV5Instruction,
+      { type: "ReserveAssetDeposited" }
+    >;
+    (reserveAssetDeposited.value[0] as any).id.interior = interior;
+    const buyExecution = bridgeMessage.value[2] as Extract<
+      XcmV5Instruction,
+      { type: "BuyExecution" }
+    >;
+    buyExecution.value.fees.id.interior = interior;
+    console.log(prettyString(bridgeMessage));
+
     const dryRunResultOnKAH = dryRunExecuteXcm(
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
         parents: 0,
-        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+        interior: toPolkadot,
       }),
       bridgeMessage,
     );
