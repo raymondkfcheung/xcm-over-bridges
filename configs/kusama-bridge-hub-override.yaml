@@ -1,6 +1,6 @@
-endpoint: wss://polkadot-bridge-hub-rpc.polkadot.io
+endpoint: wss://kusama-bridge-hub-rpc.polkadot.io
 mock-signature-host: true
-block: ${env.POLKADOT_BRIDGEHUB_BLOCK_NUMBER}
+block: ${env.KUSAMA_BRIDGEHUB_BLOCK_NUMBER}
 db: ./db.sqlite
 
 import-storage:
@@ -12,4 +12,4 @@ import-storage:
             free: 1000000000000000
 
 runtime-log-level: 5
-wasm-override: wasms/bridge_hub_polkadot_runtime.compact.compressed.wasm
+wasm-override: wasms/bridge_hub_kusama_runtime.compact.compressed.wasm

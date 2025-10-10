@@ -29,6 +29,7 @@ import {
   createRpcClient,
   deriveAlice,
   dryRunExecuteXcm,
+  maxWeight,
   prettyString,
   signAndSubmit,
   waitForNextBlock,
@@ -406,7 +407,7 @@ describe("XCM Over Bridges Tests", () => {
     const txOnKBH: Transaction<any, string, string, any> =
       kusamaBridgeHubApi.tx.PolkadotXcm.execute({
         message: messageOnKBH,
-        max_weight: { ref_time: 5_000_000_000n, proof_size: 5_000_000n },
+        max_weight: maxWeight(),
       });
     const extrinsicOnKBH = await signAndSubmit(
       "KusamaBridgeHub",
@@ -415,5 +416,14 @@ describe("XCM Over Bridges Tests", () => {
     );
     console.log(prettyString(extrinsicOnKBH));
     // expect(extrinsicOnKBH.ok).toBe(true);
+
+    const kusamaBridgeHubNextBlock = await waitForNextBlock(
+      kusamaBridgeHubClient,
+      kusamaBridgeHubCurrentBlock,
+    );
+    console.log(prettyString(kusamaBridgeHubNextBlock));
+    expect(kusamaBridgeHubNextBlock.number).toBeGreaterThan(
+      kusamaBridgeHubCurrentBlock.number,
+    );
   });
 });
