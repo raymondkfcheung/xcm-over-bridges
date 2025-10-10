@@ -11,6 +11,7 @@ import {
 } from "polkadot-api";
 import { getPolkadotSigner } from "polkadot-api/signer";
 import {
+  KusamaAssetHub,
   KusamaBridgeHub,
   PolkadotAssetHub,
   PolkadotBridgeHub,
@@ -29,7 +30,6 @@ import {
   createRpcClient,
   deriveAlice,
   dryRunExecuteXcm,
-  maxWeight,
   prettyString,
   signAndSubmit,
   waitForNextBlock,
@@ -37,18 +37,22 @@ import {
 
 const { checkHrmp } = withExpect(expect);
 const XCM_VERSION = 5;
+const KUSAMA_AH = "ws://localhost:8000";
 const KUSAMA_BH = "ws://localhost:8001";
 const POLKADOT_AH = "ws://localhost:8003";
 const POLKADOT_BH = "ws://localhost:8004";
 
+let kusamaAssetHubClient: PolkadotClient;
 let kusamaBridgeHubClient: PolkadotClient;
 let polkadotAssetHubClient: PolkadotClient;
 let polkadotBridgeHubClient: PolkadotClient;
 
+let kusamaAssetHubApi: TypedApi<typeof KusamaAssetHub>;
 let kusamaBridgeHubApi: TypedApi<typeof KusamaBridgeHub>;
 let polkadotAssetHubApi: TypedApi<typeof PolkadotAssetHub>;
 let polkadotBridgeHubApi: TypedApi<typeof PolkadotBridgeHub>;
 
+let kusamaAssetHubCurrentBlock: BlockInfo;
 let kusamaBridgeHubCurrentBlock: BlockInfo;
 let polkadotAssetHubCurrentBlock: BlockInfo;
 let polkadotBridgeHubCurrentBlock: BlockInfo;
@@ -82,14 +86,17 @@ function supportsV5ForOtherChain(
 }
 
 beforeAll(async () => {
+  kusamaAssetHubClient = createApiClient(KUSAMA_AH);
   kusamaBridgeHubClient = createApiClient(KUSAMA_BH);
   polkadotAssetHubClient = createApiClient(POLKADOT_AH);
   polkadotBridgeHubClient = createApiClient(POLKADOT_BH);
 
+  kusamaAssetHubApi = kusamaAssetHubClient.getTypedApi(KusamaAssetHub);
   kusamaBridgeHubApi = kusamaBridgeHubClient.getTypedApi(KusamaBridgeHub);
   polkadotAssetHubApi = polkadotAssetHubClient.getTypedApi(PolkadotAssetHub);
   polkadotBridgeHubApi = polkadotBridgeHubClient.getTypedApi(PolkadotBridgeHub);
 
+  kusamaAssetHubCurrentBlock = await kusamaAssetHubClient.getFinalizedBlock();
   kusamaBridgeHubCurrentBlock = await kusamaBridgeHubClient.getFinalizedBlock();
   polkadotAssetHubCurrentBlock =
     await polkadotAssetHubClient.getFinalizedBlock();
@@ -386,14 +393,14 @@ describe("XCM Over Bridges Tests", () => {
     // Decode `message` with the rest as `XcmVersionedXcm`.
     // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
     // https://papi.how/typed-codecs/
-    const codecsOnKBH = await getTypedCodecs(KusamaBridgeHub);
+    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
     const bridgeMessageOnPBH =
-      codecsOnKBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
+      codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
         outboundMessagesAsBytesOnPBH.slice(9),
       );
     expect(bridgeMessageOnPBH).toHaveLength(1);
 
-    const messageOnKBH = bridgeMessageOnPBH[0];
+    const bridgeMessage = bridgeMessageOnPBH[0];
     // Xcm([
     //   UniversalOrigin(GlobalConsensus(Polkadot)),
     //   DescendOrigin(X1([Parachain(1000)])),
@@ -403,32 +410,37 @@ describe("XCM Over Bridges Tests", () => {
     //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, ...] }]) } },
     //   SetTopic([36, 230, 219, 172, ...])
     // ])
+    // console.log(prettyString(bridgeMessage));
 
-    const weightOnKBH: any =
+    const weightForBM: any =
       await kusamaBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
-        messageOnKBH,
+        bridgeMessage,
       );
-    if (!weightOnKBH.success) {
+    if (!weightForBM.success) {
       console.error(
         "Failed to query XCM weight on KusamaBridgeHub:",
-        prettyString(weightOnKBH),
+        prettyString(weightForBM),
       );
     }
-    // expect(weightOnKBH.success).toBe(true);
+    console.log(prettyString(weightForBM));
+    // expect(weightForBM.success).toBe(true);
     // Error when querying XCM weight error=InstructionError { index: 1, error: Overflow }
 
-    const txOnKBH: Transaction<any, string, string, any> =
+    const txForBM: Transaction<any, string, string, any> =
       kusamaBridgeHubApi.tx.PolkadotXcm.execute({
-        message: messageOnKBH,
-        max_weight: maxWeight(),
+        message: bridgeMessage,
+        max_weight: {
+          ref_time: 608_449_000n,
+          proof_size: 8_757n,
+        },
       });
-    const extrinsicOnKBH = await signAndSubmit(
+    const extrinsicForBM = await signAndSubmit(
       "KusamaBridgeHub",
-      txOnKBH,
+      txForBM,
       aliceSigner,
     );
-    console.log(prettyString(extrinsicOnKBH));
-    // expect(extrinsicOnKBH.ok).toBe(true);
+    console.log(prettyString(extrinsicForBM));
+    // expect(extrinsicForBM.ok).toBe(true);
     // XCM execution failed with error error=InstructionError { index: 0, error: WeightLimitReached(Weight { ref_time: 18446744073709551615, proof_size: 18446744073709551615 }) }
 
     const kusamaBridgeHubNextBlock = await waitForNextBlock(

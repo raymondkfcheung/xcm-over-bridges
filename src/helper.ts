@@ -72,10 +72,6 @@ export async function dryRunExecuteXcm(
   return dryRunResult;
 }
 
-export function maxWeight(): { ref_time: bigint; proof_size: bigint } {
-  return { ref_time: 4_294_967_295n, proof_size: 65_535n * 2n };
-}
-
 export function prettyString(value: any): string {
   return JSON.stringify(value, toHuman, 2);
 }
