@@ -2,6 +2,9 @@ import {
   createClient,
   type BlockInfo,
   type PolkadotClient,
+  type PolkadotSigner,
+  type Transaction,
+  type TxFinalizedPayload,
 } from "polkadot-api";
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
@@ -43,8 +46,8 @@ export function deriveAlice(): KeyPair {
 }
 
 export async function dryRunExecuteXcm(
-  typedApi: any,
   chainName: string,
+  typedApi: any,
   originLocation: XcmVersionedLocation,
   xcm: XcmVersionedXcm,
 ): Promise<any> {
@@ -71,6 +74,32 @@ export async function dryRunExecuteXcm(
 
 export function prettyString(value: any): string {
   return JSON.stringify(value, toHuman, 2);
+}
+
+export async function signAndSubmit(
+  chainName: string,
+  tx: Transaction<any, string, string, any>,
+  signer: PolkadotSigner,
+): Promise<TxFinalizedPayload> {
+  const extrinsic = await tx.signAndSubmit(signer);
+  if (!extrinsic.ok) {
+    const dispatchError = extrinsic.dispatchError;
+    if (dispatchError.type === "Module") {
+      const modErr: any = dispatchError.value;
+      const localErr: any = modErr.value;
+      const innerErr: any = localErr?.value?.error?.type;
+      console.error(
+        `Dispatch Error in Module on ${chainName}: ${modErr.type} → ${localErr?.type} (${innerErr})`,
+      );
+    } else {
+      console.error(
+        "Dispatch Error on",
+        chainName,
+        prettyString(dispatchError),
+      );
+    }
+  }
+  return extrinsic;
 }
 
 export const toHuman = (_key: any, value: any) => {

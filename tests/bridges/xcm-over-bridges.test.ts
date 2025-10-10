@@ -30,6 +30,7 @@ import {
   deriveAlice,
   dryRunExecuteXcm,
   prettyString,
+  signAndSubmit,
   waitForNextBlock,
 } from "../../src/helper.js";
 
@@ -235,8 +236,8 @@ describe("XCM Over Bridges Tests", () => {
     });
 
     const dryRunResultOnPBH: any = await dryRunExecuteXcm(
-      polkadotBridgeHubApi,
       "PolkadotBridgeHub",
+      polkadotBridgeHubApi,
       assetHubAsSeenByBridgeHub,
       remoteMessage as XcmVersionedXcm,
     );
@@ -256,21 +257,11 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(dryRunMessageAcceptedEventOnPBH).toBeDefined();
 
-    const extrinsicOnPAH = await txOnPAH.signAndSubmit(aliceSigner);
-    if (!extrinsicOnPAH.ok) {
-      const dispatchError = extrinsicOnPAH.dispatchError;
-      if (dispatchError.type === "Module") {
-        const modErr: any = dispatchError.value;
-        console.error(
-          `Dispatch Error in Module on PolkadotAssetHub: ${modErr.type} → ${modErr.value?.type}`,
-        );
-      } else {
-        console.error(
-          "Dispatch Error on PolkadotAssetHub:",
-          prettyString(dispatchError),
-        );
-      }
-    }
+    const extrinsicOnPAH = await signAndSubmit(
+      "PolkadotAssetHub",
+      txOnPAH,
+      aliceSigner,
+    );
     expect(extrinsicOnPAH.ok).toBe(true);
 
     const polkadotAssetHubNextBlock = await waitForNextBlock(
@@ -417,21 +408,12 @@ describe("XCM Over Bridges Tests", () => {
         message: messageOnKBH,
         max_weight: { ref_time: 5_000_000_000n, proof_size: 5_000_000n },
       });
-    const extrinsicOnPBH = await txOnKBH.signAndSubmit(aliceSigner);
-    if (!extrinsicOnPBH.ok) {
-      const dispatchError = extrinsicOnPBH.dispatchError;
-      if (dispatchError.type === "Module") {
-        const modErr: any = dispatchError.value;
-        console.error(
-          `Dispatch Error in Module on KusamaBridgeHub: ${modErr.type} → ${modErr.value?.type}`,
-        );
-      } else {
-        console.error(
-          "Dispatch Error on KusamaBridgeHub:",
-          prettyString(dispatchError),
-        );
-      }
-    }
-    // expect(extrinsicOnPBH.ok).toBe(true);
+    const extrinsicOnKBH = await signAndSubmit(
+      "KusamaBridgeHub",
+      txOnKBH,
+      aliceSigner,
+    );
+    console.log(prettyString(extrinsicOnKBH));
+    // expect(extrinsicOnKBH.ok).toBe(true);
   });
 });
