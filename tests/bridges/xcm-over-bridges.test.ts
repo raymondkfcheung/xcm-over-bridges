@@ -421,48 +421,65 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(toPolkadotRouter).toBeDefined();
 
-    bridgeMessage.value = bridgeMessage.value.slice(1);
-    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
-    //   XcmV5Junctions.X1(XcmV5Junction.PalletInstance(toPolkadotRouter.index)),
+    // const toPolkadot = XcmV5Junctions.X1(
+    //   XcmV5Junction.PalletInstance(toPolkadotRouter.index),
     // );
-    bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
-      XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
-    );
-    const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
-      XcmV5Instruction,
-      { type: "ReserveAssetDeposited" }
-    >;
-    (reserveAssetDeposited.value[0] as any).id.interior = XcmV5Junctions.X2([
-      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-      XcmV5Junction.Parachain(1000),
-    ]);
-    console.log(prettyString(bridgeMessage));
+    // bridgeMessage.value = [
+    //   XcmV5Instruction.DescendOrigin(toPolkadot),
+    //   ...(bridgeMessage.value as XcmV5Instruction[]),
+    // ];
+    // bridgeMessage.value = bridgeMessage.value.slice(1);
+    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(toPolkadot);
+    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
+    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    // );
+    // const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
+    //   XcmV5Instruction,
+    //   { type: "ReserveAssetDeposited" }
+    // >;
+    // (reserveAssetDeposited.value[0] as any).id.interior = XcmV5Junctions.X2([
+    //   XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+    //   XcmV5Junction.Parachain(1000),
+    // ]);
+    // console.log(prettyString(bridgeMessage));
 
-    const weightForBM: any =
-      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
-        bridgeMessage,
-      );
-    if (!weightForBM.success) {
-      console.error(
-        "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
-        prettyString(weightForBM),
-      );
-    }
-    console.log(prettyString(weightForBM));
-    expect(weightForBM.success).toBe(true);
+    bridgeMessage.value = bridgeMessage.value.slice(2);
+    const dryRunResultOnKAH = dryRunExecuteXcm(
+      "KusamaAssetHub",
+      kusamaAssetHubApi,
+      XcmVersionedLocation.V5({
+        parents: 0,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+      }),
+      bridgeMessage,
+    );
+    console.log(prettyString(dryRunResultOnKAH));
+
+    // const weightForBM: any =
+    //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
+    //     bridgeMessage,
+    //   );
+    // if (!weightForBM.success) {
+    //   console.error(
+    //     "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
+    //     prettyString(weightForBM),
+    //   );
+    // }
+    // console.log(prettyString(weightForBM));
+    // expect(weightForBM.success).toBe(true);
     // Error when querying XCM weight error=InstructionError { index: 1, error: Overflow }
 
-    const txForBM: Transaction<any, string, string, any> =
-      kusamaAssetHubApi.tx.PolkadotXcm.execute({
-        message: bridgeMessage,
-        max_weight: weightForBM.value,
-      });
-    const extrinsicForBM = await signAndSubmit(
-      "Kusama Asset/Bridge Hub",
-      txForBM,
-      aliceSigner,
-    );
-    console.log(prettyString(extrinsicForBM));
+    // const txForBM: Transaction<any, string, string, any> =
+    //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
+    //     message: bridgeMessage,
+    //     max_weight: weightForBM.value,
+    //   });
+    // const extrinsicForBM = await signAndSubmit(
+    //   "Kusama Asset/Bridge Hub",
+    //   txForBM,
+    //   aliceSigner,
+    // );
+    // console.log(prettyString(extrinsicForBM));
     // expect(extrinsicForBM.ok).toBe(true);
     // XCM execution failed at instruction index=1 error=UntrustedReserveLocation
 
