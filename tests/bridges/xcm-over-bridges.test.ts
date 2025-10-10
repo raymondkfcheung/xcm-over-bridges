@@ -386,7 +386,7 @@ describe("XCM Over Bridges Tests", () => {
     // Decode `message` with the rest as `XcmVersionedXcm`.
     // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
     // https://papi.how/typed-codecs/
-    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
+    const codecsOnKBH = await getTypedCodecs(KusamaBridgeHub);
     const bridgeMessageOnPBH =
       codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
         outboundMessagesAsBytesOnPBH.slice(9),
@@ -404,6 +404,19 @@ describe("XCM Over Bridges Tests", () => {
     //   SetTopic([36, 230, 219, 172, ...])
     // ])
 
+    const weightOnKBH: any =
+      await kusamaBridgeHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        messageOnKBH,
+      );
+    if (!weightOnKBH.success) {
+      console.error(
+        "Failed to query XCM weight on KusamaBridgeHub:",
+        prettyString(weightOnKBH),
+      );
+    }
+    // expect(weightOnKBH.success).toBe(true);
+    // Error when querying XCM weight error=InstructionError { index: 1, error: Overflow }
+
     const txOnKBH: Transaction<any, string, string, any> =
       kusamaBridgeHubApi.tx.PolkadotXcm.execute({
         message: messageOnKBH,
@@ -416,6 +429,7 @@ describe("XCM Over Bridges Tests", () => {
     );
     console.log(prettyString(extrinsicOnKBH));
     // expect(extrinsicOnKBH.ok).toBe(true);
+    // XCM execution failed with error error=InstructionError { index: 0, error: WeightLimitReached(Weight { ref_time: 18446744073709551615, proof_size: 18446744073709551615 }) }
 
     const kusamaBridgeHubNextBlock = await waitForNextBlock(
       kusamaBridgeHubClient,
