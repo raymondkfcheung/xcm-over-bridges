@@ -430,8 +430,8 @@ describe("XCM Over Bridges Tests", () => {
       kusamaBridgeHubApi.tx.PolkadotXcm.execute({
         message: bridgeMessage,
         max_weight: {
-          ref_time: 608_449_000n,
-          proof_size: 8_757n,
+          ref_time: 999_999_999n,
+          proof_size: 99_999n,
         },
       });
     const extrinsicForBM = await signAndSubmit(
