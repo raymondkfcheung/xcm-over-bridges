@@ -6,6 +6,10 @@ import {
 import { getWsProvider } from "polkadot-api/ws-provider";
 import { withPolkadotSdkCompat } from "polkadot-api/polkadot-sdk-compat";
 import { ApiPromise, WsProvider } from "@polkadot/api";
+import {
+  XcmVersionedLocation,
+  XcmVersionedXcm,
+} from "@polkadot-api/descriptors";
 import type { ProviderInterface } from "@polkadot/rpc-provider/types";
 import { sr25519CreateDerive } from "@polkadot-labs/hdkd";
 import {
@@ -36,6 +40,33 @@ export function deriveAlice(): KeyPair {
   const miniSecret = entropyToMiniSecret(entropy);
   const derive = sr25519CreateDerive(miniSecret);
   return derive("//Alice");
+}
+
+export async function dryRunExecuteXcm(
+  typedApi: any,
+  chainName: string,
+  originLocation: XcmVersionedLocation,
+  xcm: XcmVersionedXcm,
+): Promise<any> {
+  const dryRunResult: any = await typedApi.apis.DryRunApi.dry_run_xcm(
+    originLocation,
+    xcm,
+  );
+  const executionResult = dryRunResult.value.execution_result;
+  const executionSuccess =
+    executionResult?.success == true || executionResult?.type === "Complete";
+  if (!dryRunResult.success || !executionSuccess) {
+    console.log("Dry Run Executing XCM on", chainName, prettyString(xcm));
+    console.log(
+      "Dry Run Result on",
+      chainName,
+      prettyString(dryRunResult.value),
+    );
+    dryRunResult.value.execution_result.success = false;
+  } else {
+    dryRunResult.value.execution_result.success = true;
+  }
+  return dryRunResult;
 }
 
 export function prettyString(value: any): string {

@@ -17,6 +17,8 @@ if [ ! -f "configs/polkadot-bridge-hub-override.yaml" ]; then
      echo "Polkadot Bridge Hub Config not found. Downloading..."
      mkdir -p configs
      wget https://raw.githubusercontent.com/AcalaNetwork/chopsticks/master/configs/polkadot-bridge-hub.yml -O configs/polkadot-bridge-hub-override.yaml
+     echo "runtime-log-level: 5" >> configs/polkadot-bridge-hub-override.yaml
+     echo "wasm-override: wasms/bridge_hub_polkadot_runtime.compact.compressed.wasm" >> configs/polkadot-bridge-hub-override.yaml
 fi
 
 echo "Launching Polkadot..."
