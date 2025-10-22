@@ -58,7 +58,9 @@ export async function dryRunExecuteXcm(
   const executionResult = dryRunResult.value.execution_result;
   const executionSuccess =
     executionResult?.success == true || executionResult?.type === "Complete";
-  if (!dryRunResult.success || !executionSuccess) {
+  if (dryRunResult.success == true && executionSuccess == true) {
+    dryRunResult.value.execution_result.success = true;
+  } else {
     console.log("Dry Run Executing XCM on", chainName, prettyString(xcm));
     console.log(
       "Dry Run Result on",
@@ -66,8 +68,6 @@ export async function dryRunExecuteXcm(
       prettyString(dryRunResult.value),
     );
     dryRunResult.value.execution_result.success = false;
-  } else {
-    dryRunResult.value.execution_result.success = true;
   }
   return dryRunResult;
 }

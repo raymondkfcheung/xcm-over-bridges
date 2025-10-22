@@ -12,3 +12,4 @@ ${THIS_DIR}/scripts/polkadot/launch.sh &
 # npx papi add PolkadotAssetHub -w ws://localhost:8003
 # npx papi add PolkadotBridgeHub -w ws://localhost:8004
 # npx papi add Polkadot -w ws://localhost:8005
+# npx vitest run -t "transfers across Bridges"

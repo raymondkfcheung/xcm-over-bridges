@@ -421,9 +421,9 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(toPolkadotRouter).toBeDefined();
 
-    const toPolkadot = XcmV5Junctions.X1(
-      XcmV5Junction.PalletInstance(toPolkadotRouter.index),
-    );
+    // const toPolkadot = XcmV5Junctions.X1(
+    //   XcmV5Junction.PalletInstance(toPolkadotRouter.index),
+    // );
     const interior = XcmV5Junctions.X2([
       XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
       XcmV5Junction.Parachain(1000),
@@ -432,18 +432,18 @@ describe("XCM Over Bridges Tests", () => {
     //   XcmV5Instruction.DescendOrigin(toPolkadot),
     //   ...(bridgeMessage.value as XcmV5Instruction[]),
     // ];
-    // bridgeMessage.value = bridgeMessage.value.slice(1);
+    bridgeMessage.value = bridgeMessage.value.slice(1);
     // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(toPolkadot);
-    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
-    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
-    // );
-    bridgeMessage.value = bridgeMessage.value.slice(2);
-    const reserveAssetDeposited = bridgeMessage.value[0] as Extract<
+    bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
+      XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    );
+    // bridgeMessage.value = bridgeMessage.value.slice(2);
+    const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
       XcmV5Instruction,
       { type: "ReserveAssetDeposited" }
     >;
     (reserveAssetDeposited.value[0] as any).id.interior = interior;
-    const buyExecution = bridgeMessage.value[2] as Extract<
+    const buyExecution = bridgeMessage.value[3] as Extract<
       XcmV5Instruction,
       { type: "BuyExecution" }
     >;
@@ -454,25 +454,25 @@ describe("XCM Over Bridges Tests", () => {
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
-        parents: 0,
-        interior: toPolkadot,
+        parents: 1,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
       }),
       bridgeMessage,
     );
     console.log(prettyString(dryRunResultOnKAH));
 
-    // const weightForBM: any =
-    //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
-    //     bridgeMessage,
-    //   );
-    // if (!weightForBM.success) {
-    //   console.error(
-    //     "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
-    //     prettyString(weightForBM),
-    //   );
-    // }
+    const weightForBM: any =
+      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        bridgeMessage,
+      );
+    if (!weightForBM.success) {
+      console.error(
+        "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
+        prettyString(weightForBM),
+      );
+    }
     // console.log(prettyString(weightForBM));
-    // expect(weightForBM.success).toBe(true);
+    expect(weightForBM.success).toBe(true);
     // Error when querying XCM weight error=InstructionError { index: 1, error: Overflow }
 
     // const txForBM: Transaction<any, string, string, any> =
