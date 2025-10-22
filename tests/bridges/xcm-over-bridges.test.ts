@@ -421,41 +421,62 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(toPolkadotRouter).toBeDefined();
 
-    // const toPolkadot = XcmV5Junctions.X1(
-    //   XcmV5Junction.PalletInstance(toPolkadotRouter.index),
-    // );
     const interior = XcmV5Junctions.X2([
       XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
       XcmV5Junction.Parachain(1000),
     ]);
-    // bridgeMessage.value = [
-    //   XcmV5Instruction.DescendOrigin(toPolkadot),
-    //   ...(bridgeMessage.value as XcmV5Instruction[]),
-    // ];
-    bridgeMessage.value = bridgeMessage.value.slice(1);
-    // bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(toPolkadot);
-    bridgeMessage.value[0] = XcmV5Instruction.DescendOrigin(
-      XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+
+    const instructions = bridgeMessage.value;
+
+    const buyExecutionIdx = instructions.findIndex(
+      (i) => i.type === "BuyExecution",
     );
-    // bridgeMessage.value = bridgeMessage.value.slice(2);
-    const reserveAssetDeposited = bridgeMessage.value[1] as Extract<
-      XcmV5Instruction,
-      { type: "ReserveAssetDeposited" }
-    >;
-    (reserveAssetDeposited.value[0] as any).id.interior = interior;
-    const buyExecution = bridgeMessage.value[3] as Extract<
+    const buyExecution = instructions[buyExecutionIdx] as Extract<
       XcmV5Instruction,
       { type: "BuyExecution" }
     >;
-    buyExecution.value.fees.id.interior = interior;
+    buyExecution.value.fees.id = {
+      parents: 1,
+      interior: XcmV5Junctions.Here(),
+    };
+
+    const reserveAssetDepositedIdx = instructions.findIndex(
+      (i) => i.type === "ReserveAssetDeposited",
+    );
+    const reserveAssetDeposited = instructions[
+      reserveAssetDepositedIdx
+    ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
+    (reserveAssetDeposited.value[0] as any).id.parents = 2;
+    (reserveAssetDeposited.value[0] as any).id.interior = interior;
+
+    const depositAssetIdx = instructions.findIndex(
+      (i) => i.type === "DepositAsset",
+    );
+    const depositAsset = instructions[depositAssetIdx] as Extract<
+      XcmV5Instruction,
+      { type: "DepositAsset" }
+    >;
+
+    const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
+    const setTopic = instructions[setTopicIdx] as Extract<
+      XcmV5Instruction,
+      { type: "SetTopic" }
+    >;
+
+    bridgeMessage.value = [
+      buyExecution,
+      reserveAssetDeposited,
+      depositAsset,
+      setTopic,
+    ];
     console.log(prettyString(bridgeMessage));
 
     const dryRunResultOnKAH = dryRunExecuteXcm(
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
-        parents: 1,
-        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+        parents: 2,
+        interior,
       }),
       bridgeMessage,
     );
