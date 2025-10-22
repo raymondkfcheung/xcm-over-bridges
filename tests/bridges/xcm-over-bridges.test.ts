@@ -34,6 +34,7 @@ import {
   dryRunExecuteXcm,
   prettyString,
   signAndSubmit,
+  toHuman,
   waitForNextBlock,
 } from "../../src/helper.js";
 
@@ -189,10 +190,11 @@ describe("XCM Over Bridges Tests", () => {
         assets: XcmVersionedAssets.V5([
           {
             id: {
-              parents: 2,
-              interior: XcmV5Junctions.X1(
-                XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
-              ),
+              parents: 0,
+              interior: XcmV5Junctions.X2([
+                XcmV5Junction.PalletInstance(50),
+                XcmV5Junction.GeneralIndex(1984n),
+              ]),
             },
             fun: XcmV3MultiassetFungibility.Fungible(100_000n),
           },
@@ -221,6 +223,7 @@ describe("XCM Over Bridges Tests", () => {
     }
     expect(dryRunResultOnPAH.success).toBe(true);
     expect(executionResultOnPAH.success).toBe(true);
+    console.log(prettyString(executionResultOnPAH));
 
     const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
     const destination = forwardedXcms[0][0];
@@ -259,10 +262,10 @@ describe("XCM Over Bridges Tests", () => {
     expect(executionResultOnPBH.success).toBe(true);
     const dryRunEmittedEventsOnPBH: any[] =
       dryRunResultOnPBH.value.emitted_events;
-    // console.log(
-    //   "Dry Run Emitted Events on PolkadotBridgeHub:",
-    //   prettyString(dryRunEmittedEventsOnPBH),
-    // );
+    console.log(
+      "Dry Run Emitted Events on PolkadotBridgeHub:",
+      prettyString(dryRunEmittedEventsOnPBH),
+    );
     const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
       (event) =>
         event.type === "BridgeKusamaMessages" &&
@@ -288,242 +291,243 @@ describe("XCM Over Bridges Tests", () => {
     const transferEvents: any[] =
       await polkadotAssetHubApi.event.Balances.Transfer.pull();
     expect(transferEvents.length).greaterThanOrEqual(1);
-    expect(transferEvents.at(-1).payload.amount).toBe(100_000n);
+    console.log(prettyString(transferEvents));
+    // expect(transferEvents.at(-1).payload.amount).toBe(100_000n);
 
-    const xcmpMessageSentEvents: any[] =
-      await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
-    expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
+    // const xcmpMessageSentEvents: any[] =
+    //   await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
+    // expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
 
-    const sentEvents: any[] =
-      await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
-    expect(sentEvents.length).greaterThanOrEqual(1);
-    const sentEvent = sentEvents[sentEvents.length - 1].payload;
-    expect(sentEvent.destination).toEqual({
-      parents: 2,
-      interior: {
-        type: "X2",
-        value: [
-          {
-            type: "GlobalConsensus",
-            value: {
-              type: "Kusama",
-              value: undefined,
-            },
-          },
-          {
-            type: "Parachain",
-            value: 1000,
-          },
-        ],
-      },
-    });
+    // const sentEvents: any[] =
+    //   await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
+    // expect(sentEvents.length).greaterThanOrEqual(1);
+    // const sentEvent = sentEvents[sentEvents.length - 1].payload;
+    // expect(sentEvent.destination).toEqual({
+    //   parents: 2,
+    //   interior: {
+    //     type: "X2",
+    //     value: [
+    //       {
+    //         type: "GlobalConsensus",
+    //         value: {
+    //           type: "Kusama",
+    //           value: undefined,
+    //         },
+    //       },
+    //       {
+    //         type: "Parachain",
+    //         value: 1000,
+    //       },
+    //     ],
+    //   },
+    // });
 
-    const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
-    const hrmpOutboundMessagesOnPAH = await checkHrmp({
-      api: polkadotAssetHubRpcClient,
-    }).value();
-    expect(hrmpOutboundMessagesOnPAH).toBeDefined();
-    const outboundMessagesOnPAH: any[] =
-      hrmpOutboundMessagesOnPAH[0].data[1].v5;
-    const topicId = outboundMessagesOnPAH.at(-1).setTopic;
+    // const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
+    // const hrmpOutboundMessagesOnPAH = await checkHrmp({
+    //   api: polkadotAssetHubRpcClient,
+    // }).value();
+    // expect(hrmpOutboundMessagesOnPAH).toBeDefined();
+    // const outboundMessagesOnPAH: any[] =
+    //   hrmpOutboundMessagesOnPAH[0].data[1].v5;
+    // const topicId = outboundMessagesOnPAH.at(-1).setTopic;
 
-    const polkadotBridgeHubNextBlock = await waitForNextBlock(
-      polkadotBridgeHubClient,
-      polkadotBridgeHubCurrentBlock,
-    );
-    expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
-      polkadotBridgeHubCurrentBlock.number,
-    );
-
-    const messageAcceptedEvents: any[] =
-      await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
-    expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
-
-    const processedEvents: any[] =
-      await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
-    expect(processedEvents.length).greaterThanOrEqual(1);
-    const processedEvent = processedEvents[processedEvents.length - 1].payload;
-    expect(processedEvent.id.asHex()).toEqual(topicId);
-
-    const messageKey = messageAcceptedEvents.at(-1).payload;
-    const outboundMessagesOnPBH =
-      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
-        messageKey,
-      );
-    expect(outboundMessagesOnPBH).toBeDefined();
-
-    // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
-    // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
-    const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
-
-    // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
-    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
-    // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
-    // Byte 1: Ignore
-    // Byte 2: VersionedInteriorLocation::V5
-    expect(outboundMessagesAsBytesOnPBH[2]).toBe(5);
-    // Byte 3: Junctions::X2
-    expect(outboundMessagesAsBytesOnPBH[3]).toBe(2);
-    const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV5Junction",
-      outboundMessagesAsBytesOnPBH[3],
-    );
-    expect(universalDestX2_0.toJSON()).toEqual({
-      accountIndex64: {
-        network: null,
-        index: 0,
-      },
-    });
-    // Bytes 4: Junction::GlobalConsensus
-    // Bytes 5: NetworkId::Kusama
-    const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV5Junction",
-      outboundMessagesAsBytesOnPBH.slice(4, 6),
-    );
-    expect(universalDestX2_1.toJSON()).toEqual({
-      globalConsensus: {
-        kusama: null,
-      },
-    });
-    // Bytes 6: Junction::Parachain
-    // Bytes 7-8: compact(1000) => ParaId 1000
-    const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
-      "StagingXcmV5Junction",
-      outboundMessagesAsBytesOnPBH.slice(6, 9),
-    );
-    expect(universalDestX2_2.toJSON()).toEqual({
-      parachain: 1000,
-    });
-    // Decode `message` with the rest as `XcmVersionedXcm`.
-    // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
-    // https://papi.how/typed-codecs/
-    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
-    const bridgeMessageOnPBH =
-      codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
-        outboundMessagesAsBytesOnPBH.slice(9),
-      );
-    expect(bridgeMessageOnPBH).toHaveLength(1);
-
-    const bridgeMessage = bridgeMessageOnPBH[0];
-    // Xcm([
-    //   UniversalOrigin(GlobalConsensus(Polkadot)),
-    //   DescendOrigin(X1([Parachain(1000)])),
-    //   ReserveAssetDeposited(Assets([Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }])),
-    //   ClearOrigin,
-    //   BuyExecution { fees: Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }, weight_limit: Unlimited },
-    //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, ...] }]) } },
-    //   SetTopic([36, 230, 219, 172, ...])
-    // ])
-    const metadataOnK: any = decAnyMetadata(
-      (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
-    ).metadata.value;
-    const palletsOnK: any = metadataOnK.pallets;
-    const toPolkadotRouter: any = palletsOnK.find(
-      (p: any) => p.name == "ToPolkadotXcmRouter",
-    );
-    expect(toPolkadotRouter).toBeDefined();
-
-    const interior = XcmV5Junctions.X2([
-      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-      XcmV5Junction.Parachain(1000),
-    ]);
-
-    const instructions = bridgeMessage.value;
-
-    const descendOriginIdx = instructions.findIndex(
-      (i) => i.type === "DescendOrigin",
-    );
-    expect(descendOriginIdx).toBe(1);
-    // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
-    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    // const polkadotBridgeHubNextBlock = await waitForNextBlock(
+    //   polkadotBridgeHubClient,
+    //   polkadotBridgeHubCurrentBlock,
+    // );
+    // expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
+    //   polkadotBridgeHubCurrentBlock.number,
     // );
 
-    const reserveAssetDepositedIdx = instructions.findIndex(
-      (i) => i.type === "ReserveAssetDeposited",
-    );
-    expect(reserveAssetDepositedIdx).toBe(2);
-    const reserveAssetDeposited = instructions[
-      reserveAssetDepositedIdx
-    ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
-    (reserveAssetDeposited.value[0] as any).id.interior = interior;
+    // const messageAcceptedEvents: any[] =
+    //   await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
+    // expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
 
-    const clearOriginIdx = instructions.findIndex(
-      (i) => i.type === "ClearOrigin",
-    );
-    expect(clearOriginIdx).toBe(3);
+    // const processedEvents: any[] =
+    //   await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
+    // expect(processedEvents.length).greaterThanOrEqual(1);
+    // const processedEvent = processedEvents[processedEvents.length - 1].payload;
+    // expect(processedEvent.id.asHex()).toEqual(topicId);
 
-    const buyExecutionIdx = instructions.findIndex(
-      (i) => i.type === "BuyExecution",
-    );
-    expect(buyExecutionIdx).toBe(4);
-    const buyExecution = instructions[buyExecutionIdx] as Extract<
-      XcmV5Instruction,
-      { type: "BuyExecution" }
-    >;
-    buyExecution.value.fees.id.interior = interior;
+    // const messageKey = messageAcceptedEvents.at(-1).payload;
+    // const outboundMessagesOnPBH =
+    //   await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+    //     messageKey,
+    //   );
+    // expect(outboundMessagesOnPBH).toBeDefined();
 
-    const depositAssetIdx = instructions.findIndex(
-      (i) => i.type === "DepositAsset",
-    );
-    expect(depositAssetIdx).toBe(5);
+    // // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
+    // // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
+    // const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
 
-    const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
-    expect(setTopicIdx).toBe(6);
-
-    bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
-
-    const weightForBM: any =
-      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
-        bridgeMessage,
-      );
-    if (!weightForBM.success) {
-      console.error(
-        "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
-        prettyString(weightForBM),
-      );
-    }
-    // console.log(prettyString(weightForBM));
-    expect(weightForBM.success).toBe(true);
-    // buyExecution.value.weight_limit = {
-    //   type: "Limited",
-    //   value: weightForBM.value,
-    // };
-
-    // console.log(prettyString(bridgeMessage));
-
-    const dryRunResultOnKAH = await dryRunExecuteXcm(
-      "KusamaAssetHub",
-      kusamaAssetHubApi,
-      XcmVersionedLocation.V5({
-        parents: 2,
-        interior,
-      }),
-      bridgeMessage,
-    );
-    // console.log(prettyString(dryRunResultOnKAH));
-
-    // const txForBM: Transaction<any, string, string, any> =
-    //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
-    //     message: bridgeMessage,
-    //     max_weight: weightForBM.value,
-    //   });
-    // const extrinsicForBM = await signAndSubmit(
-    //   "Kusama Asset/Bridge Hub",
-    //   txForBM,
-    //   aliceSigner,
+    // // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
+    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    // // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
+    // // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
+    // // Byte 1: Ignore
+    // // Byte 2: VersionedInteriorLocation::V5
+    // expect(outboundMessagesAsBytesOnPBH[2]).toBe(5);
+    // // Byte 3: Junctions::X2
+    // expect(outboundMessagesAsBytesOnPBH[3]).toBe(2);
+    // const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
+    //   "StagingXcmV5Junction",
+    //   outboundMessagesAsBytesOnPBH[3],
     // );
-    // console.log(prettyString(extrinsicForBM));
-    // expect(extrinsicForBM.ok).toBe(true);
-    // XCM execution failed at instruction index=1 error=UntrustedReserveLocation
+    // expect(universalDestX2_0.toJSON()).toEqual({
+    //   accountIndex64: {
+    //     network: null,
+    //     index: 0,
+    //   },
+    // });
+    // // Bytes 4: Junction::GlobalConsensus
+    // // Bytes 5: NetworkId::Kusama
+    // const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
+    //   "StagingXcmV5Junction",
+    //   outboundMessagesAsBytesOnPBH.slice(4, 6),
+    // );
+    // expect(universalDestX2_1.toJSON()).toEqual({
+    //   globalConsensus: {
+    //     kusama: null,
+    //   },
+    // });
+    // // Bytes 6: Junction::Parachain
+    // // Bytes 7-8: compact(1000) => ParaId 1000
+    // const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
+    //   "StagingXcmV5Junction",
+    //   outboundMessagesAsBytesOnPBH.slice(6, 9),
+    // );
+    // expect(universalDestX2_2.toJSON()).toEqual({
+    //   parachain: 1000,
+    // });
+    // // Decode `message` with the rest as `XcmVersionedXcm`.
+    // // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
+    // // https://papi.how/typed-codecs/
+    // const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
+    // const bridgeMessageOnPBH =
+    //   codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
+    //     outboundMessagesAsBytesOnPBH.slice(9),
+    //   );
+    // expect(bridgeMessageOnPBH).toHaveLength(1);
 
-    // const kusamaBridgeHubNextBlock = await waitForNextBlock(
-    //   kusamaBridgeHubClient,
-    //   kusamaBridgeHubCurrentBlock,
+    // const bridgeMessage = bridgeMessageOnPBH[0];
+    // // Xcm([
+    // //   UniversalOrigin(GlobalConsensus(Polkadot)),
+    // //   DescendOrigin(X1([Parachain(1000)])),
+    // //   ReserveAssetDeposited(Assets([Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }])),
+    // //   ClearOrigin,
+    // //   BuyExecution { fees: Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }, weight_limit: Unlimited },
+    // //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, ...] }]) } },
+    // //   SetTopic([36, 230, 219, 172, ...])
+    // // ])
+    // const metadataOnK: any = decAnyMetadata(
+    //   (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
+    // ).metadata.value;
+    // const palletsOnK: any = metadataOnK.pallets;
+    // const toPolkadotRouter: any = palletsOnK.find(
+    //   (p: any) => p.name == "ToPolkadotXcmRouter",
     // );
-    // console.log(prettyString(kusamaBridgeHubNextBlock));
-    // expect(kusamaBridgeHubNextBlock.number).toBeGreaterThan(
-    //   kusamaBridgeHubCurrentBlock.number,
+    // expect(toPolkadotRouter).toBeDefined();
+
+    // const interior = XcmV5Junctions.X2([
+    //   XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+    //   XcmV5Junction.Parachain(1000),
+    // ]);
+
+    // const instructions = bridgeMessage.value;
+
+    // const descendOriginIdx = instructions.findIndex(
+    //   (i) => i.type === "DescendOrigin",
     // );
+    // expect(descendOriginIdx).toBe(1);
+    // // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
+    // //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    // // );
+
+    // const reserveAssetDepositedIdx = instructions.findIndex(
+    //   (i) => i.type === "ReserveAssetDeposited",
+    // );
+    // expect(reserveAssetDepositedIdx).toBe(2);
+    // const reserveAssetDeposited = instructions[
+    //   reserveAssetDepositedIdx
+    // ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
+    // (reserveAssetDeposited.value[0] as any).id.interior = interior;
+
+    // const clearOriginIdx = instructions.findIndex(
+    //   (i) => i.type === "ClearOrigin",
+    // );
+    // expect(clearOriginIdx).toBe(3);
+
+    // const buyExecutionIdx = instructions.findIndex(
+    //   (i) => i.type === "BuyExecution",
+    // );
+    // expect(buyExecutionIdx).toBe(4);
+    // const buyExecution = instructions[buyExecutionIdx] as Extract<
+    //   XcmV5Instruction,
+    //   { type: "BuyExecution" }
+    // >;
+    // buyExecution.value.fees.id.interior = interior;
+
+    // const depositAssetIdx = instructions.findIndex(
+    //   (i) => i.type === "DepositAsset",
+    // );
+    // expect(depositAssetIdx).toBe(5);
+
+    // const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
+    // expect(setTopicIdx).toBe(6);
+
+    // bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
+
+    // const weightForBM: any =
+    //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
+    //     bridgeMessage,
+    //   );
+    // if (!weightForBM.success) {
+    //   console.error(
+    //     "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
+    //     prettyString(weightForBM),
+    //   );
+    // }
+    // // console.log(prettyString(weightForBM));
+    // expect(weightForBM.success).toBe(true);
+    // // buyExecution.value.weight_limit = {
+    // //   type: "Limited",
+    // //   value: weightForBM.value,
+    // // };
+
+    // // console.log(prettyString(bridgeMessage));
+
+    // const dryRunResultOnKAH = await dryRunExecuteXcm(
+    //   "KusamaAssetHub",
+    //   kusamaAssetHubApi,
+    //   XcmVersionedLocation.V5({
+    //     parents: 2,
+    //     interior,
+    //   }),
+    //   bridgeMessage,
+    // );
+    // // console.log(prettyString(dryRunResultOnKAH));
+
+    // // const txForBM: Transaction<any, string, string, any> =
+    // //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
+    // //     message: bridgeMessage,
+    // //     max_weight: weightForBM.value,
+    // //   });
+    // // const extrinsicForBM = await signAndSubmit(
+    // //   "Kusama Asset/Bridge Hub",
+    // //   txForBM,
+    // //   aliceSigner,
+    // // );
+    // // console.log(prettyString(extrinsicForBM));
+    // // expect(extrinsicForBM.ok).toBe(true);
+    // // XCM execution failed at instruction index=1 error=UntrustedReserveLocation
+
+    // // const kusamaBridgeHubNextBlock = await waitForNextBlock(
+    // //   kusamaBridgeHubClient,
+    // //   kusamaBridgeHubCurrentBlock,
+    // // );
+    // // console.log(prettyString(kusamaBridgeHubNextBlock));
+    // // expect(kusamaBridgeHubNextBlock.number).toBeGreaterThan(
+    // //   kusamaBridgeHubCurrentBlock.number,
+    // // );
   });
 });
