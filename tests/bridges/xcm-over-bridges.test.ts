@@ -164,10 +164,11 @@ describe("XCM Over Bridges Tests", () => {
     const aliceAddress = ss58Address(alicePublicKey);
 
     // Replicate `test_dry_run_transfer_across_pk_bridge`
-    // https://github.com/paritytech/polkadot-sdk/pull/6002
+    // https://xcscan.io/tx/#0xc1d5f5fd37c54d97a5a98a4fb00ca639c371caf7ca033dd9e2b4bb59d6fddd21
+    // https://assethub-polkadot.subscan.io/extrinsic/0xf2e437c26deb63ba069faace67fc47b25c2635ccfaa2b6c22b910e67846d4f03
     const origin = Enum("system", Enum("Signed", aliceAddress));
     const txOnPAH: Transaction<any, string, string, any> =
-      polkadotAssetHubApi.tx.PolkadotXcm.limited_reserve_transfer_assets({
+      polkadotAssetHubApi.tx.PolkadotXcm.transfer_assets({
         dest: XcmVersionedLocation.V5({
           parents: 2,
           interior: XcmV5Junctions.X2([
@@ -188,8 +189,10 @@ describe("XCM Over Bridges Tests", () => {
         assets: XcmVersionedAssets.V5([
           {
             id: {
-              parents: 1,
-              interior: XcmV5Junctions.Here(),
+              parents: 2,
+              interior: XcmV5Junctions.X1(
+                XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
+              ),
             },
             fun: XcmV3MultiassetFungibility.Fungible(100_000n),
           },
@@ -428,9 +431,10 @@ describe("XCM Over Bridges Tests", () => {
 
     const instructions = bridgeMessage.value;
 
-    // const descendOriginIdx = instructions.findIndex(
-    //   (i) => i.type === "DescendOrigin",
-    // );
+    const descendOriginIdx = instructions.findIndex(
+      (i) => i.type === "DescendOrigin",
+    );
+    expect(descendOriginIdx).toBe(1);
     // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
     //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
     // );
@@ -438,41 +442,36 @@ describe("XCM Over Bridges Tests", () => {
     const reserveAssetDepositedIdx = instructions.findIndex(
       (i) => i.type === "ReserveAssetDeposited",
     );
+    expect(reserveAssetDepositedIdx).toBe(2);
     const reserveAssetDeposited = instructions[
       reserveAssetDepositedIdx
     ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
     (reserveAssetDeposited.value[0] as any).id.interior = interior;
 
+    const clearOriginIdx = instructions.findIndex(
+      (i) => i.type === "ClearOrigin",
+    );
+    expect(clearOriginIdx).toBe(3);
+
     const buyExecutionIdx = instructions.findIndex(
       (i) => i.type === "BuyExecution",
     );
+    expect(buyExecutionIdx).toBe(4);
     const buyExecution = instructions[buyExecutionIdx] as Extract<
       XcmV5Instruction,
       { type: "BuyExecution" }
     >;
     buyExecution.value.fees.id.interior = interior;
 
-    // const depositAssetIdx = instructions.findIndex(
-    //   (i) => i.type === "DepositAsset",
-    // );
-    // const depositAsset = instructions[depositAssetIdx] as Extract<
-    //   XcmV5Instruction,
-    //   { type: "DepositAsset" }
-    // >;
+    const depositAssetIdx = instructions.findIndex(
+      (i) => i.type === "DepositAsset",
+    );
+    expect(depositAssetIdx).toBe(5);
 
-    // const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
-    // const setTopic = instructions[setTopicIdx] as Extract<
-    //   XcmV5Instruction,
-    //   { type: "SetTopic" }
-    // >;
+    const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
+    expect(setTopicIdx).toBe(6);
 
-    // bridgeMessage.value = [
-    //   reserveAssetDeposited,
-    //   // buyExecution,
-    //   depositAsset,
-    //   setTopic,
-    // ];
-    bridgeMessage.value = instructions.slice(2);
+    bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
 
     const weightForBM: any =
       await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
@@ -491,7 +490,7 @@ describe("XCM Over Bridges Tests", () => {
     //   value: weightForBM.value,
     // };
 
-    console.log(prettyString(bridgeMessage));
+    // console.log(prettyString(bridgeMessage));
 
     const dryRunResultOnKAH = await dryRunExecuteXcm(
       "KusamaAssetHub",
@@ -502,7 +501,7 @@ describe("XCM Over Bridges Tests", () => {
       }),
       bridgeMessage,
     );
-    console.log(prettyString(dryRunResultOnKAH));
+    // console.log(prettyString(dryRunResultOnKAH));
 
     // const txForBM: Transaction<any, string, string, any> =
     //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
