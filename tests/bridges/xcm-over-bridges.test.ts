@@ -428,6 +428,13 @@ describe("XCM Over Bridges Tests", () => {
 
     const instructions = bridgeMessage.value;
 
+    // const descendOriginIdx = instructions.findIndex(
+    //   (i) => i.type === "DescendOrigin",
+    // );
+    // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
+    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    // );
+
     const reserveAssetDepositedIdx = instructions.findIndex(
       (i) => i.type === "ReserveAssetDeposited",
     );
@@ -461,7 +468,7 @@ describe("XCM Over Bridges Tests", () => {
 
     // bridgeMessage.value = [
     //   reserveAssetDeposited,
-    //   buyExecution,
+    //   // buyExecution,
     //   depositAsset,
     //   setTopic,
     // ];
@@ -486,7 +493,7 @@ describe("XCM Over Bridges Tests", () => {
 
     console.log(prettyString(bridgeMessage));
 
-    const dryRunResultOnKAH = dryRunExecuteXcm(
+    const dryRunResultOnKAH = await dryRunExecuteXcm(
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
