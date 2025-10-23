@@ -344,58 +344,58 @@ describe("XCM Over Bridges Tests", () => {
       );
     expect(outboundMessagesOnPBH).toBeDefined();
 
-    // // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
-    // // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
-    // const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
+    // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
+    // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
+    const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
 
-    // // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
-    // const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
-    // // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
-    // // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
-    // // Byte 1: Ignore
-    // // Byte 2: VersionedInteriorLocation::V5
-    // expect(outboundMessagesAsBytesOnPBH[2]).toBe(5);
-    // // Byte 3: Junctions::X2
-    // expect(outboundMessagesAsBytesOnPBH[3]).toBe(2);
-    // const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
-    //   "StagingXcmV5Junction",
-    //   outboundMessagesAsBytesOnPBH[3],
-    // );
-    // expect(universalDestX2_0.toJSON()).toEqual({
-    //   accountIndex64: {
-    //     network: null,
-    //     index: 0,
-    //   },
-    // });
-    // // Bytes 4: Junction::GlobalConsensus
-    // // Bytes 5: NetworkId::Kusama
-    // const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
-    //   "StagingXcmV5Junction",
-    //   outboundMessagesAsBytesOnPBH.slice(4, 6),
-    // );
-    // expect(universalDestX2_1.toJSON()).toEqual({
-    //   globalConsensus: {
-    //     kusama: null,
-    //   },
-    // });
-    // // Bytes 6: Junction::Parachain
-    // // Bytes 7-8: compact(1000) => ParaId 1000
-    // const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
-    //   "StagingXcmV5Junction",
-    //   outboundMessagesAsBytesOnPBH.slice(6, 9),
-    // );
-    // expect(universalDestX2_2.toJSON()).toEqual({
-    //   parachain: 1000,
-    // });
-    // // Decode `message` with the rest as `XcmVersionedXcm`.
-    // // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
-    // // https://papi.how/typed-codecs/
-    // const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
-    // const bridgeMessageOnPBH =
-    //   codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
-    //     outboundMessagesAsBytesOnPBH.slice(9),
-    //   );
-    // expect(bridgeMessageOnPBH).toHaveLength(1);
+    // https://github.com/AcalaNetwork/acala-types.js/blob/master/packages/types/src/interfaces/lookup.ts
+    const polkadotBridgeHubRpcClient = await createRpcClient(POLKADOT_BH);
+    // Decode `universal_dest` with the first part as `StagingXcmV5Junction`.
+    // Byte 0: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedInteriorLocation.html
+    // Byte 1: Ignore
+    // Byte 2: VersionedInteriorLocation::V5
+    expect(outboundMessagesAsBytesOnPBH[2]).toBe(5);
+    // Byte 3: Junctions::X2
+    expect(outboundMessagesAsBytesOnPBH[3]).toBe(2);
+    const universalDestX2_0 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH[3],
+    );
+    expect(universalDestX2_0.toJSON()).toEqual({
+      accountIndex64: {
+        network: null,
+        index: 0,
+      },
+    });
+    // Bytes 4: Junction::GlobalConsensus
+    // Bytes 5: NetworkId::Kusama
+    const universalDestX2_1 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH.slice(4, 6),
+    );
+    expect(universalDestX2_1.toJSON()).toEqual({
+      globalConsensus: {
+        kusama: null,
+      },
+    });
+    // Bytes 6: Junction::Parachain
+    // Bytes 7-8: compact(1000) => ParaId 1000
+    const universalDestX2_2 = polkadotBridgeHubRpcClient.createType(
+      "StagingXcmV5Junction",
+      outboundMessagesAsBytesOnPBH.slice(6, 9),
+    );
+    expect(universalDestX2_2.toJSON()).toEqual({
+      parachain: 1000,
+    });
+    // Decode `message` with the rest as `XcmVersionedXcm`.
+    // Byte 9+: https://paritytech.github.io/polkadot-sdk/master/staging_xcm/enum.VersionedXcm.html
+    // https://papi.how/typed-codecs/
+    const codecsOnPBH = await getTypedCodecs(PolkadotBridgeHub);
+    const bridgeMessageOnPBH =
+      codecsOnPBH.apis.XcmPaymentApi.query_xcm_weight.args.dec(
+        outboundMessagesAsBytesOnPBH.slice(9),
+      );
+    expect(bridgeMessageOnPBH).toHaveLength(1);
 
     // const bridgeMessage = bridgeMessageOnPBH[0];
     // // Xcm([
