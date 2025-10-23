@@ -32,7 +32,7 @@ import {
   createRpcClient,
   deriveAlice,
   dryRunExecuteXcm,
-  dryRunSendXcm,
+  dryRunXcmExtrinsic,
   prettyString,
   signAndSubmit,
   waitForNextBlock,
@@ -203,7 +203,7 @@ describe("XCM Over Bridges Tests", () => {
         weight_limit: XcmV3WeightLimit.Unlimited(),
       });
     const decodedCallOnPAH: any = txOnPAH.decodedCall;
-    const dryRunResultOnPAH: any = await dryRunSendXcm(
+    const dryRunResultOnPAH: any = await dryRunXcmExtrinsic(
       "PolkadotAssetHub",
       polkadotAssetHubApi,
       origin,
@@ -231,9 +231,9 @@ describe("XCM Over Bridges Tests", () => {
     });
     expect(remoteMessages).toHaveLength(1);
     const remoteMessage: any = remoteMessages[0];
-    console.log(
-      `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
-    );
+    // console.log(
+    //   `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
+    // );
     const exportMessage = remoteMessage.value.at(-2);
     expect(exportMessage.type).toEqual("ExportMessage");
     expect(exportMessage.value.network.type).toEqual("Kusama");
@@ -405,9 +405,9 @@ describe("XCM Over Bridges Tests", () => {
     expect(bridgeMessageOnPBH).toHaveLength(1);
 
     const bridgeMessage = bridgeMessageOnPBH[0];
-    console.log(
-      `Bridge Message on PolkadotBridgeHub: ${prettyString(bridgeMessage)}`,
-    );
+    // console.log(
+    //   `Bridge Message on PolkadotBridgeHub: ${prettyString(bridgeMessage)}`,
+    // );
     // Xcm([
     //   UniversalOrigin(GlobalConsensus(Polkadot)),
     //   DescendOrigin(X1([Parachain(1000)])),
@@ -426,29 +426,21 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(toPolkadotRouter).toBeDefined();
 
-    const interior = XcmV5Junctions.X2([
-      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-      XcmV5Junction.Parachain(1000),
-    ]);
+    const prependDescendOrigin = XcmV5Instruction.DescendOrigin(
+      XcmV5Junctions.X1(XcmV5Junction.PalletInstance(toPolkadotRouter.index)),
+    );
 
-    const instructions = bridgeMessage.value;
+    const instructions = bridgeMessage.value as XcmV5Instruction[];
 
     const descendOriginIdx = instructions.findIndex(
       (i) => i.type === "DescendOrigin",
     );
     expect(descendOriginIdx).toBe(1);
-    // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
-    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
-    // );
 
     const reserveAssetDepositedIdx = instructions.findIndex(
       (i) => i.type === "ReserveAssetDeposited",
     );
     expect(reserveAssetDepositedIdx).toBe(2);
-    const reserveAssetDeposited = instructions[
-      reserveAssetDepositedIdx
-    ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
-    (reserveAssetDeposited.value[0] as any).id.interior = interior;
 
     const clearOriginIdx = instructions.findIndex(
       (i) => i.type === "ClearOrigin",
@@ -459,11 +451,6 @@ describe("XCM Over Bridges Tests", () => {
       (i) => i.type === "BuyExecution",
     );
     expect(buyExecutionIdx).toBe(4);
-    const buyExecution = instructions[buyExecutionIdx] as Extract<
-      XcmV5Instruction,
-      { type: "BuyExecution" }
-    >;
-    buyExecution.value.fees.id.interior = interior;
 
     const depositAssetIdx = instructions.findIndex(
       (i) => i.type === "DepositAsset",
@@ -473,7 +460,29 @@ describe("XCM Over Bridges Tests", () => {
     const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
     expect(setTopicIdx).toBe(6);
 
-    // bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
+    bridgeMessage.value = [prependDescendOrigin, ...instructions];
+    console.log(
+      `Updated Message on KusamaAssetHub: ${prettyString(bridgeMessage)}`,
+    );
+
+    const dryRunResultOnKAH = await dryRunExecuteXcm(
+      "KusamaAssetHub",
+      kusamaAssetHubApi,
+      XcmVersionedLocation.V5({
+        parents: 2,
+        interior: XcmV5Junctions.X2([
+          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+          XcmV5Junction.Parachain(1000),
+        ]),
+      }),
+      bridgeMessage,
+    );
+    const executionResultOnKAH = dryRunResultOnKAH.value.execution_result;
+    console.log(
+      `Dry Run Execution Result on KusamaAssetHub: ${prettyString(executionResultOnKAH)}`,
+    );
+    expect(dryRunResultOnKAH.success).toBe(true);
+    // expect(executionResultOnKAH.success).toBe(true);
 
     // const weightForBM: any =
     //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
@@ -481,29 +490,12 @@ describe("XCM Over Bridges Tests", () => {
     //   );
     // if (!weightForBM.success) {
     //   console.error(
-    //     "Failed to query XCM weight on Kusama Asset/Bridge Hub:",
+    //     "Failed to query XCM weight on KusamaAssetHub:",
     //     prettyString(weightForBM),
     //   );
     // }
-    // // console.log(prettyString(weightForBM));
+    // // console.log(`XCM Weight on KusamaAssetHub: ${prettyString(weightForBM)}`);
     // expect(weightForBM.success).toBe(true);
-    // // buyExecution.value.weight_limit = {
-    // //   type: "Limited",
-    // //   value: weightForBM.value,
-    // // };
-
-    // // console.log(prettyString(bridgeMessage));
-
-    // const dryRunResultOnKAH = await dryRunExecuteXcm(
-    //   "KusamaAssetHub",
-    //   kusamaAssetHubApi,
-    //   XcmVersionedLocation.V5({
-    //     parents: 2,
-    //     interior,
-    //   }),
-    //   bridgeMessage,
-    // );
-    // // console.log(prettyString(dryRunResultOnKAH));
 
     // // const txForBM: Transaction<any, string, string, any> =
     // //   kusamaAssetHubApi.tx.PolkadotXcm.execute({

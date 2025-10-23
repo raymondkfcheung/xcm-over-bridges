@@ -53,29 +53,29 @@ export async function dryRunExecuteXcm(
   originLocation: XcmVersionedLocation,
   xcm: XcmVersionedXcm,
 ): Promise<any> {
-  const dryRunResult: any = await typedApi.apis.DryRunApi.dry_run_xcm(
-    originLocation,
+  return handleDryRunResult(
+    "dry_run_xcm",
+    chainName,
     xcm,
+    await typedApi.apis.DryRunApi.dry_run_xcm(originLocation, xcm),
   );
-  return handleDryRunResult("dry_run_xcm", chainName, xcm, dryRunResult);
 }
 
-export async function dryRunSendXcm(
+export async function dryRunXcmExtrinsic(
   chainName: string,
   typedApi: any,
   origin: Enum<any>,
   decodedCall: any,
 ): Promise<any> {
-  const dryRunResult: any = await typedApi.apis.DryRunApi.dry_run_call(
-    origin,
-    decodedCall,
-    XCM_VERSION,
-  );
   return handleDryRunResult(
     "dry_run_call",
     chainName,
     decodedCall,
-    dryRunResult,
+    await typedApi.apis.DryRunApi.dry_run_call(
+      origin,
+      decodedCall,
+      XCM_VERSION,
+    ),
   );
 }
 
