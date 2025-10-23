@@ -57,21 +57,7 @@ export async function dryRunExecuteXcm(
     originLocation,
     xcm,
   );
-  const executionResult = dryRunResult.value.execution_result;
-  const executionSuccess =
-    executionResult?.success == true || executionResult?.type === "Complete";
-  if (dryRunResult.success == true && executionSuccess == true) {
-    dryRunResult.value.execution_result.success = true;
-  } else {
-    console.log("Dry Run Executing XCM on", chainName, prettyString(xcm));
-    console.log(
-      "Dry Run Result (dry_run_xcm) on",
-      chainName,
-      prettyString(dryRunResult.value),
-    );
-    dryRunResult.value.execution_result.success = false;
-  }
-  return dryRunResult;
+  return handleDryRunResult("dry_run_xcm", chainName, xcm, dryRunResult);
 }
 
 export async function dryRunSendXcm(
@@ -85,21 +71,12 @@ export async function dryRunSendXcm(
     decodedCall,
     XCM_VERSION,
   );
-  const executionResult = dryRunResult.value.execution_result;
-  const executionSuccess =
-    executionResult?.success == true || executionResult?.type === "Complete";
-  if (dryRunResult.success == true && executionSuccess == true) {
-    dryRunResult.value.execution_result.success = true;
-  } else {
-    console.log("Dry Run Sending XCM on", chainName, prettyString(decodedCall));
-    console.log(
-      "Dry Run Result (dry_run_call) on",
-      chainName,
-      prettyString(dryRunResult.value),
-    );
-    dryRunResult.value.execution_result.success = false;
-  }
-  return dryRunResult;
+  return handleDryRunResult(
+    "dry_run_call",
+    chainName,
+    decodedCall,
+    dryRunResult,
+  );
 }
 
 export function prettyString(value: any): string {
@@ -162,4 +139,27 @@ export async function waitForNextBlock(
   }
 
   return currentBlock;
+}
+
+function handleDryRunResult(
+  mode: string,
+  chainName: string,
+  xcmOrExtrinsic: any,
+  dryRunResult: any,
+): any {
+  const executionResult = dryRunResult.value.execution_result;
+  const executionSuccess =
+    executionResult?.success == true || executionResult?.type === "Complete";
+  if (dryRunResult.success == true && executionSuccess == true) {
+    dryRunResult.value.execution_result.success = true;
+  } else {
+    console.log(
+      `Dry Run XCM (${mode}) on ${chainName}: ${prettyString(xcmOrExtrinsic)}`,
+    );
+    console.log(
+      `Dry Run Result (${mode}) on ${chainName}: ${prettyString(dryRunResult.value)}`,
+    );
+    dryRunResult.value.execution_result.success = false;
+  }
+  return dryRunResult;
 }
