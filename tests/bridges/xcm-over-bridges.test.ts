@@ -209,6 +209,9 @@ describe("XCM Over Bridges Tests", () => {
       origin,
       decodedCallOnPAH,
     );
+    // console.log(
+    //   `Dry Run Result on PolkadotAssetHub: ${prettyString(dryRunResultOnPAH)}`,
+    // );
     const executionResultOnPAH = dryRunResultOnPAH.value.execution_result;
     expect(dryRunResultOnPAH.success).toBe(true);
     expect(executionResultOnPAH.success).toBe(true);
@@ -228,6 +231,9 @@ describe("XCM Over Bridges Tests", () => {
     });
     expect(remoteMessages).toHaveLength(1);
     const remoteMessage: any = remoteMessages[0];
+    console.log(
+      `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
+    );
     const exportMessage = remoteMessage.value.at(-2);
     expect(exportMessage.type).toEqual("ExportMessage");
     expect(exportMessage.value.network.type).toEqual("Kusama");
@@ -251,8 +257,7 @@ describe("XCM Over Bridges Tests", () => {
     const dryRunEmittedEventsOnPBH: any[] =
       dryRunResultOnPBH.value.emitted_events;
     // console.log(
-    //   "Dry Run Emitted Events on PolkadotBridgeHub:",
-    //   prettyString(dryRunEmittedEventsOnPBH),
+    //   `Dry Run Emitted Events on PolkadotBridgeHub: ${prettyString(dryRunEmittedEventsOnPBH)}`,
     // );
     const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
       (event) =>
@@ -268,6 +273,7 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(extrinsicOnPAH.ok).toBe(true);
 
+    // https://assethub-polkadot.subscan.io/block/10079339
     const polkadotAssetHubNextBlock = await waitForNextBlock(
       polkadotAssetHubClient,
       polkadotAssetHubCurrentBlock,
@@ -318,6 +324,7 @@ describe("XCM Over Bridges Tests", () => {
       hrmpOutboundMessagesOnPAH[0].data[1].v5;
     const topicId = outboundMessagesOnPAH.at(-1).setTopic;
 
+    // https://bridgehub-polkadot.subscan.io/block/6238930
     const polkadotBridgeHubNextBlock = await waitForNextBlock(
       polkadotBridgeHubClient,
       polkadotBridgeHubCurrentBlock,
@@ -397,71 +404,74 @@ describe("XCM Over Bridges Tests", () => {
       );
     expect(bridgeMessageOnPBH).toHaveLength(1);
 
-    // const bridgeMessage = bridgeMessageOnPBH[0];
-    // // Xcm([
-    // //   UniversalOrigin(GlobalConsensus(Polkadot)),
-    // //   DescendOrigin(X1([Parachain(1000)])),
-    // //   ReserveAssetDeposited(Assets([Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }])),
-    // //   ClearOrigin,
-    // //   BuyExecution { fees: Asset { id: AssetId(Location { parents: 2, interior: X1([GlobalConsensus(Polkadot)]) }), fun: Fungible(100000) }, weight_limit: Unlimited },
-    // //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: Location { parents: 0, interior: X1([AccountId32 { network: None, id: [152, 24, 255, 60, ...] }]) } },
-    // //   SetTopic([36, 230, 219, 172, ...])
-    // // ])
-    // const metadataOnK: any = decAnyMetadata(
-    //   (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
-    // ).metadata.value;
-    // const palletsOnK: any = metadataOnK.pallets;
-    // const toPolkadotRouter: any = palletsOnK.find(
-    //   (p: any) => p.name == "ToPolkadotXcmRouter",
+    const bridgeMessage = bridgeMessageOnPBH[0];
+    console.log(
+      `Bridge Message on PolkadotBridgeHub: ${prettyString(bridgeMessage)}`,
+    );
+    // Xcm([
+    //   UniversalOrigin(GlobalConsensus(Polkadot)),
+    //   DescendOrigin(X1([Parachain(1000)])),
+    //   ReserveAssetDeposited(Assets([Asset { id: ..., fun: ... }])),
+    //   ClearOrigin,
+    //   BuyExecution { fees: ..., weight_limit: Unlimited },
+    //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: ... },
+    //   SetTopic([...])
+    // ])
+    const metadataOnK: any = decAnyMetadata(
+      (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
+    ).metadata.value;
+    const palletsOnK: any = metadataOnK.pallets;
+    const toPolkadotRouter: any = palletsOnK.find(
+      (p: any) => p.name == "ToPolkadotXcmRouter",
+    );
+    expect(toPolkadotRouter).toBeDefined();
+
+    const interior = XcmV5Junctions.X2([
+      XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+      XcmV5Junction.Parachain(1000),
+    ]);
+
+    const instructions = bridgeMessage.value;
+
+    const descendOriginIdx = instructions.findIndex(
+      (i) => i.type === "DescendOrigin",
+    );
+    expect(descendOriginIdx).toBe(1);
+    // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
+    //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
     // );
-    // expect(toPolkadotRouter).toBeDefined();
 
-    // const interior = XcmV5Junctions.X2([
-    //   XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-    //   XcmV5Junction.Parachain(1000),
-    // ]);
+    const reserveAssetDepositedIdx = instructions.findIndex(
+      (i) => i.type === "ReserveAssetDeposited",
+    );
+    expect(reserveAssetDepositedIdx).toBe(2);
+    const reserveAssetDeposited = instructions[
+      reserveAssetDepositedIdx
+    ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
+    (reserveAssetDeposited.value[0] as any).id.interior = interior;
 
-    // const instructions = bridgeMessage.value;
+    const clearOriginIdx = instructions.findIndex(
+      (i) => i.type === "ClearOrigin",
+    );
+    expect(clearOriginIdx).toBe(3);
 
-    // const descendOriginIdx = instructions.findIndex(
-    //   (i) => i.type === "DescendOrigin",
-    // );
-    // expect(descendOriginIdx).toBe(1);
-    // // instructions[descendOriginIdx] = XcmV5Instruction.DescendOrigin(
-    // //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
-    // // );
+    const buyExecutionIdx = instructions.findIndex(
+      (i) => i.type === "BuyExecution",
+    );
+    expect(buyExecutionIdx).toBe(4);
+    const buyExecution = instructions[buyExecutionIdx] as Extract<
+      XcmV5Instruction,
+      { type: "BuyExecution" }
+    >;
+    buyExecution.value.fees.id.interior = interior;
 
-    // const reserveAssetDepositedIdx = instructions.findIndex(
-    //   (i) => i.type === "ReserveAssetDeposited",
-    // );
-    // expect(reserveAssetDepositedIdx).toBe(2);
-    // const reserveAssetDeposited = instructions[
-    //   reserveAssetDepositedIdx
-    // ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
-    // (reserveAssetDeposited.value[0] as any).id.interior = interior;
+    const depositAssetIdx = instructions.findIndex(
+      (i) => i.type === "DepositAsset",
+    );
+    expect(depositAssetIdx).toBe(5);
 
-    // const clearOriginIdx = instructions.findIndex(
-    //   (i) => i.type === "ClearOrigin",
-    // );
-    // expect(clearOriginIdx).toBe(3);
-
-    // const buyExecutionIdx = instructions.findIndex(
-    //   (i) => i.type === "BuyExecution",
-    // );
-    // expect(buyExecutionIdx).toBe(4);
-    // const buyExecution = instructions[buyExecutionIdx] as Extract<
-    //   XcmV5Instruction,
-    //   { type: "BuyExecution" }
-    // >;
-    // buyExecution.value.fees.id.interior = interior;
-
-    // const depositAssetIdx = instructions.findIndex(
-    //   (i) => i.type === "DepositAsset",
-    // );
-    // expect(depositAssetIdx).toBe(5);
-
-    // const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
-    // expect(setTopicIdx).toBe(6);
+    const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
+    expect(setTopicIdx).toBe(6);
 
     // bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
 
