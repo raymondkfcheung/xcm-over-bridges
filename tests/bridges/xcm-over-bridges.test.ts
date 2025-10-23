@@ -309,39 +309,40 @@ describe("XCM Over Bridges Tests", () => {
       },
     });
 
-    // const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
-    // const hrmpOutboundMessagesOnPAH = await checkHrmp({
-    //   api: polkadotAssetHubRpcClient,
-    // }).value();
-    // expect(hrmpOutboundMessagesOnPAH).toBeDefined();
-    // const outboundMessagesOnPAH: any[] =
-    //   hrmpOutboundMessagesOnPAH[0].data[1].v5;
-    // const topicId = outboundMessagesOnPAH.at(-1).setTopic;
+    const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
+    const hrmpOutboundMessagesOnPAH = await checkHrmp({
+      api: polkadotAssetHubRpcClient,
+    }).value();
+    expect(hrmpOutboundMessagesOnPAH).toBeDefined();
+    const outboundMessagesOnPAH: any[] =
+      hrmpOutboundMessagesOnPAH[0].data[1].v5;
+    const topicId = outboundMessagesOnPAH.at(-1).setTopic;
 
-    // const polkadotBridgeHubNextBlock = await waitForNextBlock(
-    //   polkadotBridgeHubClient,
-    //   polkadotBridgeHubCurrentBlock,
-    // );
-    // expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
-    //   polkadotBridgeHubCurrentBlock.number,
-    // );
+    const polkadotBridgeHubNextBlock = await waitForNextBlock(
+      polkadotBridgeHubClient,
+      polkadotBridgeHubCurrentBlock,
+    );
+    expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
+      polkadotBridgeHubCurrentBlock.number,
+    );
 
-    // const messageAcceptedEvents: any[] =
-    //   await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
-    // expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
+    const messageAcceptedEvents: any[] =
+      await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
+    expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
 
-    // const processedEvents: any[] =
-    //   await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
-    // expect(processedEvents.length).greaterThanOrEqual(1);
-    // const processedEvent = processedEvents[processedEvents.length - 1].payload;
-    // expect(processedEvent.id.asHex()).toEqual(topicId);
+    const processedEvents: any[] =
+      await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
+    expect(processedEvents.length).greaterThanOrEqual(1);
+    const processedEvent = processedEvents[processedEvents.length - 1].payload;
+    expect(processedEvent.id.asHex()).toEqual(topicId);
+    expect(sentEvent.message_id.asHex()).toEqual(topicId);
 
-    // const messageKey = messageAcceptedEvents.at(-1).payload;
-    // const outboundMessagesOnPBH =
-    //   await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
-    //     messageKey,
-    //   );
-    // expect(outboundMessagesOnPBH).toBeDefined();
+    const messageKey = messageAcceptedEvents.at(-1).payload;
+    const outboundMessagesOnPBH =
+      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+        messageKey,
+      );
+    expect(outboundMessagesOnPBH).toBeDefined();
 
     // // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
     // // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
