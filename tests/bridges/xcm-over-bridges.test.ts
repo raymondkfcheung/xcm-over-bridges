@@ -250,10 +250,10 @@ describe("XCM Over Bridges Tests", () => {
     expect(executionResultOnPBH.success).toBe(true);
     const dryRunEmittedEventsOnPBH: any[] =
       dryRunResultOnPBH.value.emitted_events;
-    console.log(
-      "Dry Run Emitted Events on PolkadotBridgeHub:",
-      prettyString(dryRunEmittedEventsOnPBH),
-    );
+    // console.log(
+    //   "Dry Run Emitted Events on PolkadotBridgeHub:",
+    //   prettyString(dryRunEmittedEventsOnPBH),
+    // );
     const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
       (event) =>
         event.type === "BridgeKusamaMessages" &&
@@ -276,39 +276,38 @@ describe("XCM Over Bridges Tests", () => {
       polkadotAssetHubCurrentBlock.number,
     );
 
-    const transferEvents: any[] =
-      await polkadotAssetHubApi.event.Balances.Transfer.pull();
-    expect(transferEvents.length).greaterThanOrEqual(1);
-    console.log(prettyString(transferEvents));
-    // expect(transferEvents.at(-1).payload.amount).toBe(100_000n);
+    const transferredEvents: any[] =
+      await polkadotAssetHubApi.event.Assets.Transferred.pull();
+    expect(transferredEvents.length).greaterThanOrEqual(1);
+    expect(transferredEvents.at(-1).payload.amount).toBe(1_000_000n);
 
-    // const xcmpMessageSentEvents: any[] =
-    //   await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
-    // expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
+    const xcmpMessageSentEvents: any[] =
+      await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
+    expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
 
-    // const sentEvents: any[] =
-    //   await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
-    // expect(sentEvents.length).greaterThanOrEqual(1);
-    // const sentEvent = sentEvents[sentEvents.length - 1].payload;
-    // expect(sentEvent.destination).toEqual({
-    //   parents: 2,
-    //   interior: {
-    //     type: "X2",
-    //     value: [
-    //       {
-    //         type: "GlobalConsensus",
-    //         value: {
-    //           type: "Kusama",
-    //           value: undefined,
-    //         },
-    //       },
-    //       {
-    //         type: "Parachain",
-    //         value: 1000,
-    //       },
-    //     ],
-    //   },
-    // });
+    const sentEvents: any[] =
+      await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
+    expect(sentEvents.length).greaterThanOrEqual(1);
+    const sentEvent = sentEvents[sentEvents.length - 1].payload;
+    expect(sentEvent.destination).toEqual({
+      parents: 2,
+      interior: {
+        type: "X2",
+        value: [
+          {
+            type: "GlobalConsensus",
+            value: {
+              type: "Kusama",
+              value: undefined,
+            },
+          },
+          {
+            type: "Parachain",
+            value: 1000,
+          },
+        ],
+      },
+    });
 
     // const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
     // const hrmpOutboundMessagesOnPAH = await checkHrmp({
