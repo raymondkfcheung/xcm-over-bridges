@@ -32,9 +32,9 @@ import {
   createRpcClient,
   deriveAlice,
   dryRunExecuteXcm,
+  dryRunSendXcm,
   prettyString,
   signAndSubmit,
-  toHuman,
   waitForNextBlock,
 } from "../../src/helper.js";
 
@@ -196,34 +196,22 @@ describe("XCM Over Bridges Tests", () => {
                 XcmV5Junction.GeneralIndex(1984n),
               ]),
             },
-            fun: XcmV3MultiassetFungibility.Fungible(100_000n),
+            fun: XcmV3MultiassetFungibility.Fungible(1_000_000n),
           },
         ]),
         fee_asset_item: 0,
         weight_limit: XcmV3WeightLimit.Unlimited(),
       });
     const decodedCallOnPAH: any = txOnPAH.decodedCall;
-    const dryRunResultOnPAH: any =
-      await polkadotAssetHubApi.apis.DryRunApi.dry_run_call(
-        origin,
-        decodedCallOnPAH,
-        XCM_VERSION,
-      );
+    const dryRunResultOnPAH: any = await dryRunSendXcm(
+      "PolkadotAssetHub",
+      polkadotAssetHubApi,
+      origin,
+      decodedCallOnPAH,
+    );
     const executionResultOnPAH = dryRunResultOnPAH.value.execution_result;
-    if (!dryRunResultOnPAH.success || !executionResultOnPAH.success) {
-      console.error("Local Dry Run failed on PolkadotAssetHub!");
-      console.log(
-        "Dry Run XCM on PolkadotAssetHub:",
-        prettyString(decodedCallOnPAH),
-      );
-      console.log(
-        "Dry Run Result on PolkadotAssetHub:",
-        prettyString(dryRunResultOnPAH.value),
-      );
-    }
     expect(dryRunResultOnPAH.success).toBe(true);
     expect(executionResultOnPAH.success).toBe(true);
-    console.log(prettyString(executionResultOnPAH));
 
     const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
     const destination = forwardedXcms[0][0];

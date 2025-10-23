@@ -1,5 +1,6 @@
 import {
   createClient,
+  Enum,
   type BlockInfo,
   type PolkadotClient,
   type PolkadotSigner,
@@ -22,6 +23,7 @@ import {
   type KeyPair,
 } from "@polkadot-labs/hdkd-helpers";
 
+const XCM_VERSION = 5;
 const MAX_RETRIES = 8; // Number of attempts to wait for block finalisation
 
 export function createApiClient(endpoint: string): PolkadotClient {
@@ -63,7 +65,35 @@ export async function dryRunExecuteXcm(
   } else {
     console.log("Dry Run Executing XCM on", chainName, prettyString(xcm));
     console.log(
-      "Dry Run Result on",
+      "Dry Run Result (dry_run_xcm) on",
+      chainName,
+      prettyString(dryRunResult.value),
+    );
+    dryRunResult.value.execution_result.success = false;
+  }
+  return dryRunResult;
+}
+
+export async function dryRunSendXcm(
+  chainName: string,
+  typedApi: any,
+  origin: Enum<any>,
+  decodedCall: any,
+): Promise<any> {
+  const dryRunResult: any = await typedApi.apis.DryRunApi.dry_run_call(
+    origin,
+    decodedCall,
+    XCM_VERSION,
+  );
+  const executionResult = dryRunResult.value.execution_result;
+  const executionSuccess =
+    executionResult?.success == true || executionResult?.type === "Complete";
+  if (dryRunResult.success == true && executionSuccess == true) {
+    dryRunResult.value.execution_result.success = true;
+  } else {
+    console.log("Dry Run Sending XCM on", chainName, prettyString(decodedCall));
+    console.log(
+      "Dry Run Result (dry_run_call) on",
       chainName,
       prettyString(dryRunResult.value),
     );
