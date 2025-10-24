@@ -17,18 +17,20 @@ import {
   PolkadotBridgeHub,
   XcmV3MultiassetFungibility,
   XcmV3WeightLimit,
-  XcmV5AssetFilter,
   XcmV5Instruction,
   XcmV5Junction,
   XcmV5Junctions,
   XcmV5NetworkId,
-  XcmV5WildAsset,
   XcmVersionedAssets,
   XcmVersionedLocation,
   XcmVersionedXcm,
 } from "@polkadot-api/descriptors";
 import { decAnyMetadata } from "@polkadot-api/substrate-bindings";
-import { ss58Address } from "@polkadot-labs/hdkd-helpers";
+import {
+  ss58Address,
+  ss58Decode,
+  ss58Encode,
+} from "@polkadot-labs/hdkd-helpers";
 import {
   createApiClient,
   createRpcClient,
@@ -165,6 +167,9 @@ describe("XCM Over Bridges Tests", () => {
       alice.sign,
     );
     const aliceAddress = ss58Address(alicePublicKey);
+    const expectedAmount = 1_000_000_000_000n;
+    const expectedBeneficiary =
+      "0x9818ff3c27d256631065ecabf0c50e02551e5c5342b8669486c1e566fcbf847f";
 
     // Replicate `test_dry_run_transfer_across_pk_bridge`
     // https://xcscan.io/tx/#0xc1d5f5fd37c54d97a5a98a4fb00ca639c371caf7ca033dd9e2b4bb59d6fddd21
@@ -184,9 +189,7 @@ describe("XCM Over Bridges Tests", () => {
           parents: 0,
           interior: XcmV5Junctions.X1(
             XcmV5Junction.AccountId32({
-              id: Binary.fromHex(
-                "0x9818ff3c27d256631065ecabf0c50e02551e5c5342b8669486c1e566fcbf847f",
-              ),
+              id: Binary.fromHex(expectedBeneficiary),
             }),
           ),
         }),
@@ -198,7 +201,7 @@ describe("XCM Over Bridges Tests", () => {
                 XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Kusama()),
               ),
             },
-            fun: XcmV3MultiassetFungibility.Fungible(1_000_000_000_000n),
+            fun: XcmV3MultiassetFungibility.Fungible(expectedAmount),
           },
         ]),
         fee_asset_item: 0,
@@ -293,7 +296,7 @@ describe("XCM Over Bridges Tests", () => {
     expect(assetEvents.length).greaterThanOrEqual(1);
     const assetPayload = assetEvents.at(-1).payload;
     const assetAmount = assetPayload.amount ?? assetPayload.balance ?? 0n;
-    expect(assetAmount).toBe(1_000_000_000_000n);
+    expect(assetAmount).toBe(expectedAmount);
 
     const xcmpMessageSentEvents: any[] =
       await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
@@ -349,7 +352,7 @@ describe("XCM Over Bridges Tests", () => {
     const processedEvents: any[] =
       await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
     expect(processedEvents.length).greaterThanOrEqual(1);
-    const processedEvent = processedEvents[processedEvents.length - 1].payload;
+    const processedEvent = processedEvents.at(-1).payload;
     expect(processedEvent.id.asHex()).toEqual(topicId);
 
     const messageKey = messageAcceptedEvents.at(-1).payload;
@@ -490,40 +493,62 @@ describe("XCM Over Bridges Tests", () => {
     expect(dryRunResultOnKAH.success).toBe(true);
     expect(executionResultOnKAH.success).toBe(true);
 
-    // const weightForBM: any =
-    //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
-    //     bridgeMessage,
-    //   );
-    // if (!weightForBM.success) {
-    //   console.error(
-    //     "Failed to query XCM weight on KusamaAssetHub:",
-    //     prettyString(weightForBM),
-    //   );
-    // }
+    const weightForBM: any =
+      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        bridgeMessage,
+      );
+    if (!weightForBM.success) {
+      console.error(
+        "Failed to query XCM weight on KusamaAssetHub:",
+        prettyString(weightForBM),
+      );
+    }
     // console.log(`XCM Weight on KusamaAssetHub: ${prettyString(weightForBM)}`);
-    // expect(weightForBM.success).toBe(true);
+    expect(weightForBM.success).toBe(true);
 
-    // // Failed with DescendOrigin, UniversalOrigin, DescendOrigin
-    // const txForBM: Transaction<any, string, string, any> =
-    //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
-    //     message: bridgeMessage,
-    //     max_weight: weightForBM.value,
-    //   });
-    // const extrinsicForBM = await signAndSubmit(
-    //   "KusamaAssetHub",
-    //   txForBM,
-    //   aliceSigner,
+    const txForBM: Transaction<any, string, string, any> =
+      kusamaAssetHubApi.tx.PolkadotXcm.execute({
+        message: bridgeMessage,
+        max_weight: weightForBM.value,
+      });
+    const extrinsicForBM = await signAndSubmit(
+      "KusamaAssetHub",
+      txForBM,
+      aliceSigner,
+    );
+    console.log(`Extrinsic on KusamaAssetHub: ${prettyString(extrinsicForBM)}`);
+    expect(extrinsicForBM.ok).toBe(true);
+
+    // https://assethub-kusama.subscan.io/block/11343456
+    const kusamaAssetHubNextBlock = await waitForNextBlock(
+      kusamaAssetHubClient,
+      kusamaAssetHubCurrentBlock,
+    );
+    console.log(
+      `Extrinsic on KusamaBridgeHub: ${prettyString(kusamaAssetHubNextBlock)}`,
+    );
+    expect(kusamaAssetHubNextBlock.number).toBeGreaterThan(
+      kusamaBridgeHubCurrentBlock.number,
+    );
+
+    const burnedEvents: any[] =
+      await kusamaAssetHubApi.event.Balances.Burned.pull();
+    // console.log(
+    //   `Balances Burned Events on KusamaBridgeHub: ${prettyString(burnedEvents)}`,
     // );
-    // console.log(prettyString(extrinsicForBM));
-    // expect(extrinsicForBM.ok).toBe(true);
+    expect(burnedEvents.length).greaterThanOrEqual(1);
+    const burnedEvent = burnedEvents.at(-1).payload;
+    expect(burnedEvent.amount).toBe(expectedAmount);
+    expect(burnedEvent.who).toBe(ss58Encode(alicePublicKey, 2));
 
-    // // const kusamaBridgeHubNextBlock = await waitForNextBlock(
-    // //   kusamaBridgeHubClient,
-    // //   kusamaBridgeHubCurrentBlock,
-    // // );
-    // // console.log(prettyString(kusamaBridgeHubNextBlock));
-    // // expect(kusamaBridgeHubNextBlock.number).toBeGreaterThan(
-    // //   kusamaBridgeHubCurrentBlock.number,
-    // // );
+    const mintedEvents: any[] =
+      await kusamaAssetHubApi.event.Balances.Minted.pull();
+    // console.log(
+    //   `Balances Minted Events on KusamaBridgeHub: ${prettyString(mintedEvents)}`,
+    // );
+    expect(mintedEvents.length).greaterThanOrEqual(1);
+    const mintedEvent = mintedEvents.at(-1).payload;
+    expect(mintedEvent.amount).toBe(expectedAmount);
+    expect(mintedEvent.who).toBe(ss58Encode(expectedBeneficiary, 2));
   });
 });
