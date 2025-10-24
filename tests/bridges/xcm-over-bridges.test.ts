@@ -243,15 +243,13 @@ describe("XCM Over Bridges Tests", () => {
     expect(exportMessage.value.xcm.at(-1).type).toEqual("SetTopic");
     expect(remoteMessage.value.at(-1).type).toEqual("SetTopic");
 
-    const assetHubAsSeenByBridgeHub = XcmVersionedLocation.V5({
-      parents: 1,
-      interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
-    });
-
     const dryRunResultOnPBH: any = await dryRunExecuteXcm(
       "PolkadotBridgeHub",
       polkadotBridgeHubApi,
-      assetHubAsSeenByBridgeHub,
+      XcmVersionedLocation.V5({
+        parents: 1,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
+      }),
       remoteMessage as XcmVersionedXcm,
     );
     const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
@@ -461,6 +459,7 @@ describe("XCM Over Bridges Tests", () => {
     expect(setTopicIdx).toBe(6);
 
     // Kusama Bridge Hub -> Kusama Asset Hub
+    bridgeMessage.value = instructions.slice(reserveAssetDepositedIdx);
     // const reserveAssetDeposited = instructions[
     //   reserveAssetDepositedIdx
     // ] as Extract<XcmV5Instruction, { type: "ReserveAssetDeposited" }>;
@@ -485,55 +484,55 @@ describe("XCM Over Bridges Tests", () => {
     //   ),
     //   ...instructions,
     // ];
-    bridgeMessage.value = [
-      XcmV5Instruction.DescendOrigin(
-        XcmV5Junctions.X1(XcmV5Junction.PalletInstance(53)),
-      ),
-      XcmV5Instruction.UniversalOrigin(
-        XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-      ),
-      XcmV5Instruction.DescendOrigin(
-        XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
-      ),
-      XcmV5Instruction.WithdrawAsset([
-        {
-          id: {
-            interior: XcmV5Junctions.Here(),
-            parents: 1,
-          },
-          fun: XcmV3MultiassetFungibility.Fungible(22_807_364_727_9120n),
-        },
-      ]),
-      XcmV5Instruction.ClearOrigin(),
-      XcmV5Instruction.BuyExecution({
-        fees: {
-          id: {
-            interior: XcmV5Junctions.Here(),
-            parents: 1,
-          },
-          fun: XcmV3MultiassetFungibility.Fungible(22_807_364_727_9120n),
-        },
-        weight_limit: XcmV3WeightLimit.Unlimited(),
-      }),
-      XcmV5Instruction.DepositAsset({
-        assets: XcmV5AssetFilter.Wild(XcmV5WildAsset.AllCounted(1)),
-        beneficiary: {
-          interior: XcmV5Junctions.X1(
-            XcmV5Junction.AccountId32({
-              id: Binary.fromHex(
-                "0x7279fcf9694718e1234d102825dccaf332f0ea36edf1ca7c0358c4b68260d24b",
-              ),
-            }),
-          ),
-          parents: 0,
-        },
-      }),
-      XcmV5Instruction.SetTopic(
-        Binary.fromHex(
-          "0x1d2a2b11f373e6ddb0e4baab1739696742d6f4b60e267f47caee597c153fce47",
-        ),
-      ),
-    ];
+    // bridgeMessage.value = [
+    //   // XcmV5Instruction.DescendOrigin(
+    //   //   XcmV5Junctions.X1(XcmV5Junction.PalletInstance(53)),
+    //   // ),
+    //   // XcmV5Instruction.UniversalOrigin(
+    //   //   XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+    //   // ),
+    //   // XcmV5Instruction.DescendOrigin(
+    //   //   XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
+    //   // ),
+    //   XcmV5Instruction.WithdrawAsset([
+    //     {
+    //       id: {
+    //         interior: XcmV5Junctions.Here(),
+    //         parents: 1,
+    //       },
+    //       fun: XcmV3MultiassetFungibility.Fungible(22_807_364_727_9120n),
+    //     },
+    //   ]),
+    //   XcmV5Instruction.ClearOrigin(),
+    //   XcmV5Instruction.BuyExecution({
+    //     fees: {
+    //       id: {
+    //         interior: XcmV5Junctions.Here(),
+    //         parents: 1,
+    //       },
+    //       fun: XcmV3MultiassetFungibility.Fungible(22_807_364_727_9120n),
+    //     },
+    //     weight_limit: XcmV3WeightLimit.Unlimited(),
+    //   }),
+    //   XcmV5Instruction.DepositAsset({
+    //     assets: XcmV5AssetFilter.Wild(XcmV5WildAsset.AllCounted(1)),
+    //     beneficiary: {
+    //       interior: XcmV5Junctions.X1(
+    //         XcmV5Junction.AccountId32({
+    //           id: Binary.fromHex(
+    //             "0x7279fcf9694718e1234d102825dccaf332f0ea36edf1ca7c0358c4b68260d24b",
+    //           ),
+    //         }),
+    //       ),
+    //       parents: 0,
+    //     },
+    //   }),
+    //   XcmV5Instruction.SetTopic(
+    //     Binary.fromHex(
+    //       "0x1d2a2b11f373e6ddb0e4baab1739696742d6f4b60e267f47caee597c153fce47",
+    //     ),
+    //   ),
+    // ];
     // bridgeMessage.value = [
     //   XcmV5Instruction.WithdrawAsset([
     //     {
@@ -584,12 +583,25 @@ describe("XCM Over Bridges Tests", () => {
       `Updated Message on KusamaBridgeHub: ${prettyString(bridgeMessage)}`,
     );
 
+    // Failed without DescendOrigin, UniversalOrigin, DescendOrigin
+    // const dryRunResultOnKAH = await dryRunExecuteXcm(
+    //   "KusamaAssetHub",
+    //   kusamaAssetHubApi,
+    //   XcmVersionedLocation.V5({
+    //     parents: 1,
+    //     interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+    //   }),
+    //   bridgeMessage,
+    // );
     const dryRunResultOnKAH = await dryRunExecuteXcm(
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
-        parents: 1,
-        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+        parents: 2,
+        interior: XcmV5Junctions.X2([
+          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+          XcmV5Junction.Parachain(1000),
+        ]),
       }),
       bridgeMessage,
     );
@@ -600,31 +612,32 @@ describe("XCM Over Bridges Tests", () => {
     expect(dryRunResultOnKAH.success).toBe(true);
     // expect(executionResultOnKAH.success).toBe(true);
 
-    // const weightForBM: any =
-    //   await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
-    //     bridgeMessage,
-    //   );
-    // if (!weightForBM.success) {
-    //   console.error(
-    //     "Failed to query XCM weight on KusamaAssetHub:",
-    //     prettyString(weightForBM),
-    //   );
-    // }
-    // // console.log(`XCM Weight on KusamaAssetHub: ${prettyString(weightForBM)}`);
-    // expect(weightForBM.success).toBe(true);
+    const weightForBM: any =
+      await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
+        bridgeMessage,
+      );
+    if (!weightForBM.success) {
+      console.error(
+        "Failed to query XCM weight on KusamaAssetHub:",
+        prettyString(weightForBM),
+      );
+    }
+    console.log(`XCM Weight on KusamaAssetHub: ${prettyString(weightForBM)}`);
+    expect(weightForBM.success).toBe(true);
 
-    // const txForBM: Transaction<any, string, string, any> =
-    //   kusamaAssetHubApi.tx.PolkadotXcm.execute({
-    //     message: bridgeMessage,
-    //     max_weight: weightForBM.value,
-    //   });
-    // const extrinsicForBM = await signAndSubmit(
-    //   "KusamaAssetHub",
-    //   txForBM,
-    //   aliceSigner,
-    // );
-    // console.log(prettyString(extrinsicForBM));
-    // expect(extrinsicForBM.ok).toBe(true);
+    // Failed with DescendOrigin, UniversalOrigin, DescendOrigin
+    const txForBM: Transaction<any, string, string, any> =
+      kusamaAssetHubApi.tx.PolkadotXcm.execute({
+        message: bridgeMessage,
+        max_weight: weightForBM.value,
+      });
+    const extrinsicForBM = await signAndSubmit(
+      "KusamaAssetHub",
+      txForBM,
+      aliceSigner,
+    );
+    console.log(prettyString(extrinsicForBM));
+    expect(extrinsicForBM.ok).toBe(true);
 
     // const kusamaBridgeHubNextBlock = await waitForNextBlock(
     //   kusamaBridgeHubClient,
