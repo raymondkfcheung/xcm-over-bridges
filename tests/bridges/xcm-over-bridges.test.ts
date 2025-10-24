@@ -435,10 +435,10 @@ describe("XCM Over Bridges Tests", () => {
       (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
     ).metadata.value;
     const palletsOnK: any = metadataOnKAH.pallets;
-    const toPolkadotRouter: any = palletsOnK.find(
-      (p: any) => p.name == "ToPolkadotXcmRouter",
+    const foreignAssetsPallet: any = palletsOnK.find(
+      (p: any) => p.name == "ForeignAssets",
     );
-    expect(toPolkadotRouter).toBeDefined();
+    expect(foreignAssetsPallet).toBeDefined();
 
     const instructions = bridgeMessage.value as XcmV5Instruction[];
 
@@ -502,7 +502,9 @@ describe("XCM Over Bridges Tests", () => {
     // From Kusama Bridge Hub
     bridgeMessage.value = [
       XcmV5Instruction.DescendOrigin(
-        XcmV5Junctions.X1(XcmV5Junction.PalletInstance(53)),
+        XcmV5Junctions.X1(
+          XcmV5Junction.PalletInstance(foreignAssetsPallet.index),
+        ),
       ),
       instructions[universalOriginIdx] as XcmV5Instruction,
       instructions[descendOriginIdx] as XcmV5Instruction,
