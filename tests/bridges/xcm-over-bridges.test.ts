@@ -167,6 +167,7 @@ describe("XCM Over Bridges Tests", () => {
     // Replicate `test_dry_run_transfer_across_pk_bridge`
     // https://xcscan.io/tx/#0xc1d5f5fd37c54d97a5a98a4fb00ca639c371caf7ca033dd9e2b4bb59d6fddd21
     // https://assethub-polkadot.subscan.io/extrinsic/0xf2e437c26deb63ba069faace67fc47b25c2635ccfaa2b6c22b910e67846d4f03
+    // Polkadot Asset Hub -> Polkadot Bridge Hub
     const origin = Enum("system", Enum("Signed", aliceAddress));
     const txOnPAH: Transaction<any, string, string, any> =
       polkadotAssetHubApi.tx.PolkadotXcm.transfer_assets({
@@ -351,6 +352,7 @@ describe("XCM Over Bridges Tests", () => {
       );
     expect(outboundMessagesOnPBH).toBeDefined();
 
+    // Polkadot Bridge Hub -> Kusama Bridge Hub
     // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
     // https://paritytech.github.io/polkadot-sdk/master/staging_xcm_builder/struct.BridgeMessage.html
     const outboundMessagesAsBytesOnPBH = outboundMessagesOnPBH!.asBytes();
@@ -417,10 +419,10 @@ describe("XCM Over Bridges Tests", () => {
     //   DepositAsset { assets: Wild(AllCounted(1)), beneficiary: ... },
     //   SetTopic([...])
     // ])
-    const metadataOnK: any = decAnyMetadata(
+    const metadataOnKAH: any = decAnyMetadata(
       (await kusamaAssetHubApi.apis.Metadata.metadata()).asBytes(),
     ).metadata.value;
-    const palletsOnK: any = metadataOnK.pallets;
+    const palletsOnK: any = metadataOnKAH.pallets;
     const toPolkadotRouter: any = palletsOnK.find(
       (p: any) => p.name == "ToPolkadotXcmRouter",
     );
@@ -460,6 +462,7 @@ describe("XCM Over Bridges Tests", () => {
     const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
     expect(setTopicIdx).toBe(6);
 
+    // Kusama Bridge Hub -> Kusama Asset Hub
     bridgeMessage.value = [prependDescendOrigin, ...instructions];
     console.log(
       `Updated Message on KusamaAssetHub: ${prettyString(bridgeMessage)}`,
@@ -469,11 +472,8 @@ describe("XCM Over Bridges Tests", () => {
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
-        parents: 2,
-        interior: XcmV5Junctions.X2([
-          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-          XcmV5Junction.Parachain(1000),
-        ]),
+        parents: 1,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
       }),
       bridgeMessage,
     );
