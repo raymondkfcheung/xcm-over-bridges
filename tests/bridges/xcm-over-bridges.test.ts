@@ -506,6 +506,17 @@ describe("XCM Over Bridges Tests", () => {
     // console.log(`XCM Weight on KusamaAssetHub: ${prettyString(weightForBM)}`);
     expect(weightForBM.success).toBe(true);
 
+    const aliceOnKAH = ss58Encode(alicePublicKey, 2);
+    const beneficiaryOnKAH = ss58Encode(expectedBeneficiary, 2);
+    const [aliceAssetBefore, benAssetBefore]: any[] =
+      await kusamaAssetHubApi.query.System.Account.getValues([
+        [aliceOnKAH],
+        [beneficiaryOnKAH],
+      ]);
+    // console.log(
+    //   `Balances before execution on KusamaAssetHub: ${prettyString(aliceAssetBefore)} and ${prettyString(benAssetBefore)}`,
+    // );
+
     const txForBM: Transaction<any, string, string, any> =
       kusamaAssetHubApi.tx.PolkadotXcm.execute({
         message: bridgeMessage,
@@ -516,16 +527,13 @@ describe("XCM Over Bridges Tests", () => {
       txForBM,
       aliceSigner,
     );
-    console.log(`Extrinsic on KusamaAssetHub: ${prettyString(extrinsicForBM)}`);
+    // console.log(`Extrinsic on KusamaAssetHub: ${prettyString(extrinsicForBM)}`);
     expect(extrinsicForBM.ok).toBe(true);
 
     // https://assethub-kusama.subscan.io/block/11343456
     const kusamaAssetHubNextBlock = await waitForNextBlock(
       kusamaAssetHubClient,
       kusamaAssetHubCurrentBlock,
-    );
-    console.log(
-      `Extrinsic on KusamaBridgeHub: ${prettyString(kusamaAssetHubNextBlock)}`,
     );
     expect(kusamaAssetHubNextBlock.number).toBeGreaterThan(
       kusamaBridgeHubCurrentBlock.number,
@@ -539,7 +547,7 @@ describe("XCM Over Bridges Tests", () => {
     expect(burnedEvents.length).greaterThanOrEqual(1);
     const burnedEvent = burnedEvents.at(-1).payload;
     expect(burnedEvent.amount).toBe(expectedAmount);
-    expect(burnedEvent.who).toBe(ss58Encode(alicePublicKey, 2));
+    expect(burnedEvent.who).toBe(aliceOnKAH);
 
     const mintedEvents: any[] =
       await kusamaAssetHubApi.event.Balances.Minted.pull();
@@ -549,6 +557,33 @@ describe("XCM Over Bridges Tests", () => {
     expect(mintedEvents.length).greaterThanOrEqual(1);
     const mintedEvent = mintedEvents.at(-1).payload;
     expect(mintedEvent.amount).toBe(expectedAmount);
-    expect(mintedEvent.who).toBe(ss58Encode(expectedBeneficiary, 2));
+    expect(mintedEvent.who).toBe(beneficiaryOnKAH);
+
+    const transactionFeePaidEvents: any[] =
+      await kusamaAssetHubApi.event.TransactionPayment.TransactionFeePaid.pull();
+    // console.log(
+    //   `TransactionPayment TransactionFeePaid Events on KusamaBridgeHub: ${prettyString(transactionFeePaidEvents)}`,
+    // );
+    expect(transactionFeePaidEvents.length).greaterThanOrEqual(1);
+    const transactionFeePaidEvent = transactionFeePaidEvents.at(-1).payload;
+    expect(transactionFeePaidEvent.actual_fee).toBeGreaterThan(0n);
+    expect(transactionFeePaidEvent.tip).toBe(0n);
+
+    const [aliceAssetAfter, benAssetAfter]: any[] =
+      await kusamaAssetHubApi.query.System.Account.getValues([
+        [aliceOnKAH],
+        [beneficiaryOnKAH],
+      ]);
+    // console.log(
+    //   `Balances after execution on KusamaAssetHub: ${prettyString(aliceAssetAfter)} and ${prettyString(benAssetAfter)}`,
+    // );
+    expect(aliceAssetAfter.data.free).toBe(
+      aliceAssetBefore.data.free -
+        expectedAmount -
+        transactionFeePaidEvent.actual_fee,
+    );
+    expect(benAssetAfter.data.free).toBe(
+      benAssetBefore.data.free + expectedAmount,
+    );
   });
 });
