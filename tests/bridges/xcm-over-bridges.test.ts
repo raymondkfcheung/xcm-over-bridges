@@ -17,10 +17,12 @@ import {
   PolkadotBridgeHub,
   XcmV3MultiassetFungibility,
   XcmV3WeightLimit,
+  XcmV5AssetFilter,
   XcmV5Instruction,
   XcmV5Junction,
   XcmV5Junctions,
   XcmV5NetworkId,
+  XcmV5WildAsset,
   XcmVersionedAssets,
   XcmVersionedLocation,
   XcmVersionedXcm,
@@ -440,6 +442,11 @@ describe("XCM Over Bridges Tests", () => {
 
     const instructions = bridgeMessage.value as XcmV5Instruction[];
 
+    const universalOriginIdx = instructions.findIndex(
+      (i) => i.type === "UniversalOrigin",
+    );
+    expect(universalOriginIdx).toBe(0);
+
     const descendOriginIdx = instructions.findIndex(
       (i) => i.type === "DescendOrigin",
     );
@@ -469,12 +476,10 @@ describe("XCM Over Bridges Tests", () => {
     expect(setTopicIdx).toBe(6);
 
     // Kusama Bridge Hub -> Kusama Asset Hub
+    // From Polkadot Asset Hub
     bridgeMessage.value = instructions.slice(withdrawAssetIdx);
-    // console.log(
-    //   `Updated Message on KusamaBridgeHub: ${prettyString(bridgeMessage)}`,
-    // );
 
-    const dryRunResultOnKAH = await dryRunExecuteXcm(
+    const dryRunResultOnKAHFromPAH = await dryRunExecuteXcm(
       "KusamaAssetHub",
       kusamaAssetHubApi,
       XcmVersionedLocation.V5({
@@ -486,13 +491,67 @@ describe("XCM Over Bridges Tests", () => {
       }),
       bridgeMessage,
     );
-    const executionResultOnKAH = dryRunResultOnKAH.value.execution_result;
+    const executionResultOnKAHFromPAH =
+      dryRunResultOnKAHFromPAH.value.execution_result;
     // console.log(
-    //   `Dry Run Execution Result on KusamaAssetHub: ${prettyString(executionResultOnKAH)}`,
+    //   `Dry Run Execution Result on KusamaAssetHub (from PolkadotAssetHub): ${prettyString(executionResultOnKAHFromPAH)}`,
     // );
-    expect(dryRunResultOnKAH.success).toBe(true);
-    expect(executionResultOnKAH.success).toBe(true);
+    expect(executionResultOnKAHFromPAH.success).toBe(true);
+    expect(executionResultOnKAHFromPAH.success).toBe(true);
 
+    // From Kusama Bridge Hub
+    bridgeMessage.value = [
+      XcmV5Instruction.DescendOrigin(
+        XcmV5Junctions.X1(XcmV5Junction.PalletInstance(53)),
+      ),
+      instructions[universalOriginIdx] as XcmV5Instruction,
+      instructions[descendOriginIdx] as XcmV5Instruction,
+      XcmV5Instruction.WithdrawAsset([
+        {
+          id: {
+            interior: XcmV5Junctions.Here(),
+            parents: 1,
+          },
+          fun: XcmV3MultiassetFungibility.Fungible(expectedAmount),
+        },
+      ]),
+      instructions[clearOriginIdx] as XcmV5Instruction,
+      XcmV5Instruction.BuyExecution({
+        fees: {
+          id: {
+            interior: XcmV5Junctions.Here(),
+            parents: 1,
+          },
+          fun: XcmV3MultiassetFungibility.Fungible(expectedAmount),
+        },
+        weight_limit: XcmV3WeightLimit.Unlimited(),
+      }),
+      instructions[depositAssetIdx] as XcmV5Instruction,
+      instructions[setTopicIdx] as XcmV5Instruction,
+    ];
+    // console.log(
+    //   `Updated Message on KusamaBridgeHub: ${prettyString(bridgeMessage)}`,
+    // );
+
+    const dryRunResultOnKAHFromKBH = await dryRunExecuteXcm(
+      "KusamaAssetHub",
+      kusamaAssetHubApi,
+      XcmVersionedLocation.V5({
+        parents: 1,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1002)),
+      }),
+      bridgeMessage,
+    );
+    const executionResultOnKAHFromKBH =
+      dryRunResultOnKAHFromKBH.value.execution_result;
+    // console.log(
+    //   `Dry Run Execution Result on KusamaAssetHub (from KusamaBridgeHub): ${prettyString(executionResultOnKAHFromKBH)}`,
+    // );
+    expect(dryRunResultOnKAHFromKBH.success).toBe(true);
+    expect(executionResultOnKAHFromKBH.success).toBe(true);
+
+    // Skip UniversalOrigin & DescendOrigin
+    bridgeMessage.value = instructions.slice(descendOriginIdx + 1);
     const weightForBM: any =
       await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
         bridgeMessage,
