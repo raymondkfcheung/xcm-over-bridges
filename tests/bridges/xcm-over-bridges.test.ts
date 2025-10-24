@@ -302,7 +302,7 @@ describe("XCM Over Bridges Tests", () => {
     const sentEvents: any[] =
       await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
     expect(sentEvents.length).greaterThanOrEqual(1);
-    const sentEvent = sentEvents[sentEvents.length - 1].payload;
+    const sentEvent = sentEvents.at(-1).payload;
     expect(sentEvent.destination).toEqual({
       parents: 2,
       interior: {
@@ -331,34 +331,33 @@ describe("XCM Over Bridges Tests", () => {
     const outboundMessagesOnPAH: any[] =
       hrmpOutboundMessagesOnPAH[0].data[1].v5;
     const topicId = outboundMessagesOnPAH.at(-1).setTopic;
-    expect(topicId).toBeDefined();
+    expect(sentEvent.message_id.asHex()).toEqual(topicId);
 
-    // // https://bridgehub-polkadot.subscan.io/block/6238930
-    // const polkadotBridgeHubNextBlock = await waitForNextBlock(
-    //   polkadotBridgeHubClient,
-    //   polkadotBridgeHubCurrentBlock,
-    // );
-    // expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
-    //   polkadotBridgeHubCurrentBlock.number,
-    // );
+    // https://bridgehub-polkadot.subscan.io/block/6238930
+    const polkadotBridgeHubNextBlock = await waitForNextBlock(
+      polkadotBridgeHubClient,
+      polkadotBridgeHubCurrentBlock,
+    );
+    expect(polkadotBridgeHubNextBlock.number).toBeGreaterThan(
+      polkadotBridgeHubCurrentBlock.number,
+    );
 
-    // const messageAcceptedEvents: any[] =
-    //   await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
-    // expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
+    const messageAcceptedEvents: any[] =
+      await polkadotBridgeHubApi.event.BridgeKusamaMessages.MessageAccepted.pull();
+    expect(messageAcceptedEvents.length).greaterThanOrEqual(1);
 
-    // const processedEvents: any[] =
-    //   await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
-    // expect(processedEvents.length).greaterThanOrEqual(1);
-    // const processedEvent = processedEvents[processedEvents.length - 1].payload;
-    // expect(processedEvent.id.asHex()).toEqual(topicId);
-    // expect(sentEvent.message_id.asHex()).toEqual(topicId);
+    const processedEvents: any[] =
+      await polkadotBridgeHubApi.event.MessageQueue.Processed.pull();
+    expect(processedEvents.length).greaterThanOrEqual(1);
+    const processedEvent = processedEvents[processedEvents.length - 1].payload;
+    expect(processedEvent.id.asHex()).toEqual(topicId);
 
-    // const messageKey = messageAcceptedEvents.at(-1).payload;
-    // const outboundMessagesOnPBH =
-    //   await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
-    //     messageKey,
-    //   );
-    // expect(outboundMessagesOnPBH).toBeDefined();
+    const messageKey = messageAcceptedEvents.at(-1).payload;
+    const outboundMessagesOnPBH =
+      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+        messageKey,
+      );
+    expect(outboundMessagesOnPBH).toBeDefined();
 
     // // Polkadot Bridge Hub -> Kusama Bridge Hub
     // // `OutboundMessages` encodes `BridgeMessage { universal_dest, message }`.
