@@ -273,56 +273,65 @@ describe("XCM Over Bridges Tests", () => {
     );
     expect(extrinsicOnPAH.ok).toBe(true);
 
-    // // https://assethub-polkadot.subscan.io/block/10079339
-    // const polkadotAssetHubNextBlock = await waitForNextBlock(
-    //   polkadotAssetHubClient,
-    //   polkadotAssetHubCurrentBlock,
+    // https://assethub-polkadot.subscan.io/block/10079339
+    const polkadotAssetHubNextBlock = await waitForNextBlock(
+      polkadotAssetHubClient,
+      polkadotAssetHubCurrentBlock,
+    );
+    expect(polkadotAssetHubNextBlock.number).toBeGreaterThan(
+      polkadotAssetHubCurrentBlock.number,
+    );
+
+    let assetEvents: any[] =
+      await polkadotAssetHubApi.event.ForeignAssets.Burned.pull();
+    if (assetEvents.length === 0) {
+      assetEvents = await polkadotAssetHubApi.event.Assets.Transferred.pull();
+    }
+    // console.log(
+    //   `Asset Burned/Transferred Events on PolkadotAssetHub: ${prettyString(assetEvents)}`,
     // );
-    // expect(polkadotAssetHubNextBlock.number).toBeGreaterThan(
-    //   polkadotAssetHubCurrentBlock.number,
-    // );
+    expect(assetEvents.length).greaterThanOrEqual(1);
+    const assetPayload = assetEvents.at(-1).payload;
+    const assetAmount = assetPayload.amount ?? assetPayload.balance ?? 0n;
+    expect(assetAmount).toBe(1_000_000n);
 
-    // const transferredEvents: any[] =
-    //   await polkadotAssetHubApi.event.Assets.Transferred.pull();
-    // expect(transferredEvents.length).greaterThanOrEqual(1);
-    // expect(transferredEvents.at(-1).payload.amount).toBe(1_000_000n);
+    const xcmpMessageSentEvents: any[] =
+      await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
+    expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
 
-    // const xcmpMessageSentEvents: any[] =
-    //   await polkadotAssetHubApi.event.XcmpQueue.XcmpMessageSent.pull();
-    // expect(xcmpMessageSentEvents.length).greaterThanOrEqual(1);
+    const sentEvents: any[] =
+      await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
+    expect(sentEvents.length).greaterThanOrEqual(1);
+    const sentEvent = sentEvents[sentEvents.length - 1].payload;
+    expect(sentEvent.destination).toEqual({
+      parents: 2,
+      interior: {
+        type: "X2",
+        value: [
+          {
+            type: "GlobalConsensus",
+            value: {
+              type: "Kusama",
+              value: undefined,
+            },
+          },
+          {
+            type: "Parachain",
+            value: 1000,
+          },
+        ],
+      },
+    });
 
-    // const sentEvents: any[] =
-    //   await polkadotAssetHubApi.event.PolkadotXcm.Sent.pull();
-    // expect(sentEvents.length).greaterThanOrEqual(1);
-    // const sentEvent = sentEvents[sentEvents.length - 1].payload;
-    // expect(sentEvent.destination).toEqual({
-    //   parents: 2,
-    //   interior: {
-    //     type: "X2",
-    //     value: [
-    //       {
-    //         type: "GlobalConsensus",
-    //         value: {
-    //           type: "Kusama",
-    //           value: undefined,
-    //         },
-    //       },
-    //       {
-    //         type: "Parachain",
-    //         value: 1000,
-    //       },
-    //     ],
-    //   },
-    // });
-
-    // const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
-    // const hrmpOutboundMessagesOnPAH = await checkHrmp({
-    //   api: polkadotAssetHubRpcClient,
-    // }).value();
-    // expect(hrmpOutboundMessagesOnPAH).toBeDefined();
-    // const outboundMessagesOnPAH: any[] =
-    //   hrmpOutboundMessagesOnPAH[0].data[1].v5;
-    // const topicId = outboundMessagesOnPAH.at(-1).setTopic;
+    const polkadotAssetHubRpcClient = await createRpcClient(POLKADOT_AH);
+    const hrmpOutboundMessagesOnPAH = await checkHrmp({
+      api: polkadotAssetHubRpcClient,
+    }).value();
+    expect(hrmpOutboundMessagesOnPAH).toBeDefined();
+    const outboundMessagesOnPAH: any[] =
+      hrmpOutboundMessagesOnPAH[0].data[1].v5;
+    const topicId = outboundMessagesOnPAH.at(-1).setTopic;
+    expect(topicId).toBeDefined();
 
     // // https://bridgehub-polkadot.subscan.io/block/6238930
     // const polkadotBridgeHubNextBlock = await waitForNextBlock(
