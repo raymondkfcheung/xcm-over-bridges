@@ -218,60 +218,60 @@ describe("XCM Over Bridges Tests", () => {
     expect(dryRunResultOnPAH.success).toBe(true);
     expect(executionResultOnPAH.success).toBe(true);
 
-    // const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
-    // const destination = forwardedXcms[0][0];
-    // const remoteMessages: XcmVersionedXcm[] = forwardedXcms[0][1];
-    // expect(destination.value).toEqual({
-    //   parents: 1,
-    //   interior: {
-    //     type: "X1",
-    //     value: {
-    //       type: "Parachain",
-    //       value: 1002,
-    //     },
-    //   },
-    // });
-    // expect(remoteMessages).toHaveLength(1);
-    // const remoteMessage: any = remoteMessages[0];
+    const forwardedXcms: any[] = dryRunResultOnPAH.value.forwarded_xcms;
+    const destination = forwardedXcms[0][0];
+    const remoteMessages: XcmVersionedXcm[] = forwardedXcms[0][1];
+    expect(destination.value).toEqual({
+      parents: 1,
+      interior: {
+        type: "X1",
+        value: {
+          type: "Parachain",
+          value: 1002,
+        },
+      },
+    });
+    expect(remoteMessages).toHaveLength(1);
+    const remoteMessage: any = remoteMessages[0];
     // console.log(
     //   `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
     // );
-    // const exportMessage = remoteMessage.value.at(-2);
-    // expect(exportMessage.type).toEqual("ExportMessage");
-    // expect(exportMessage.value.network.type).toEqual("Kusama");
-    // expect(exportMessage.value.xcm.at(-1).type).toEqual("SetTopic");
-    // expect(remoteMessage.value.at(-1).type).toEqual("SetTopic");
+    const exportMessage = remoteMessage.value.at(-2);
+    expect(exportMessage.type).toEqual("ExportMessage");
+    expect(exportMessage.value.network.type).toEqual("Kusama");
+    expect(exportMessage.value.xcm.at(-1).type).toEqual("SetTopic");
+    expect(remoteMessage.value.at(-1).type).toEqual("SetTopic");
 
-    // const dryRunResultOnPBH: any = await dryRunExecuteXcm(
-    //   "PolkadotBridgeHub",
-    //   polkadotBridgeHubApi,
-    //   XcmVersionedLocation.V5({
-    //     parents: 1,
-    //     interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
-    //   }),
-    //   remoteMessage as XcmVersionedXcm,
-    // );
-    // const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
-    // expect(dryRunResultOnPBH.success).toBe(true);
-    // expect(executionResultOnPBH.success).toBe(true);
-    // const dryRunEmittedEventsOnPBH: any[] =
-    //   dryRunResultOnPBH.value.emitted_events;
+    const dryRunResultOnPBH: any = await dryRunExecuteXcm(
+      "PolkadotBridgeHub",
+      polkadotBridgeHubApi,
+      XcmVersionedLocation.V5({
+        parents: 1,
+        interior: XcmV5Junctions.X1(XcmV5Junction.Parachain(1000)),
+      }),
+      remoteMessage as XcmVersionedXcm,
+    );
+    const executionResultOnPBH = dryRunResultOnPBH.value.execution_result;
+    expect(dryRunResultOnPBH.success).toBe(true);
+    expect(executionResultOnPBH.success).toBe(true);
+    const dryRunEmittedEventsOnPBH: any[] =
+      dryRunResultOnPBH.value.emitted_events;
     // console.log(
     //   `Dry Run Emitted Events on PolkadotBridgeHub: ${prettyString(dryRunEmittedEventsOnPBH)}`,
     // );
-    // const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
-    //   (event) =>
-    //     event.type === "BridgeKusamaMessages" &&
-    //     event.value.type === "MessageAccepted",
-    // );
-    // expect(dryRunMessageAcceptedEventOnPBH).toBeDefined();
+    const dryRunMessageAcceptedEventOnPBH = dryRunEmittedEventsOnPBH.find(
+      (event) =>
+        event.type === "BridgeKusamaMessages" &&
+        event.value.type === "MessageAccepted",
+    );
+    expect(dryRunMessageAcceptedEventOnPBH).toBeDefined();
 
-    // const extrinsicOnPAH = await signAndSubmit(
-    //   "PolkadotAssetHub",
-    //   txOnPAH,
-    //   aliceSigner,
-    // );
-    // expect(extrinsicOnPAH.ok).toBe(true);
+    const extrinsicOnPAH = await signAndSubmit(
+      "PolkadotAssetHub",
+      txOnPAH,
+      aliceSigner,
+    );
+    expect(extrinsicOnPAH.ok).toBe(true);
 
     // // https://assethub-polkadot.subscan.io/block/10079339
     // const polkadotAssetHubNextBlock = await waitForNextBlock(
