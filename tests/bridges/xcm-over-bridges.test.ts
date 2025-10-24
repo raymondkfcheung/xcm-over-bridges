@@ -476,29 +476,6 @@ describe("XCM Over Bridges Tests", () => {
     expect(setTopicIdx).toBe(6);
 
     // Kusama Bridge Hub -> Kusama Asset Hub
-    // From Polkadot Asset Hub
-    bridgeMessage.value = instructions.slice(withdrawAssetIdx);
-
-    const dryRunResultOnKAHFromPAH = await dryRunExecuteXcm(
-      "KusamaAssetHub",
-      kusamaAssetHubApi,
-      XcmVersionedLocation.V5({
-        parents: 2,
-        interior: XcmV5Junctions.X2([
-          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
-          XcmV5Junction.Parachain(1000),
-        ]),
-      }),
-      bridgeMessage,
-    );
-    const executionResultOnKAHFromPAH =
-      dryRunResultOnKAHFromPAH.value.execution_result;
-    // console.log(
-    //   `Dry Run Execution Result on KusamaAssetHub (from PolkadotAssetHub): ${prettyString(executionResultOnKAHFromPAH)}`,
-    // );
-    expect(executionResultOnKAHFromPAH.success).toBe(true);
-    expect(executionResultOnKAHFromPAH.success).toBe(true);
-
     // From Kusama Bridge Hub
     bridgeMessage.value = [
       XcmV5Instruction.DescendOrigin(
@@ -552,8 +529,30 @@ describe("XCM Over Bridges Tests", () => {
     expect(dryRunResultOnKAHFromKBH.success).toBe(true);
     expect(executionResultOnKAHFromKBH.success).toBe(true);
 
+    // From Polkadot Asset Hub
     // Skip UniversalOrigin & DescendOrigin
     bridgeMessage.value = instructions.slice(descendOriginIdx + 1);
+
+    const dryRunResultOnKAHFromPAH = await dryRunExecuteXcm(
+      "KusamaAssetHub",
+      kusamaAssetHubApi,
+      XcmVersionedLocation.V5({
+        parents: 2,
+        interior: XcmV5Junctions.X2([
+          XcmV5Junction.GlobalConsensus(XcmV5NetworkId.Polkadot()),
+          XcmV5Junction.Parachain(1000),
+        ]),
+      }),
+      bridgeMessage,
+    );
+    const executionResultOnKAHFromPAH =
+      dryRunResultOnKAHFromPAH.value.execution_result;
+    // console.log(
+    //   `Dry Run Execution Result on KusamaAssetHub (from PolkadotAssetHub): ${prettyString(executionResultOnKAHFromPAH)}`,
+    // );
+    expect(executionResultOnKAHFromPAH.success).toBe(true);
+    expect(executionResultOnKAHFromPAH.success).toBe(true);
+
     const weightForBM: any =
       await kusamaAssetHubApi.apis.XcmPaymentApi.query_xcm_weight(
         bridgeMessage,
