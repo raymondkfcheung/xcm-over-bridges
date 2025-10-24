@@ -19,8 +19,6 @@ Install Chopsticks (latest):
 npm install -g @acala-network/chopsticks@latest
 ```
 
-> If you don't have Node yet, install Node 18+.
-
 ## (Optional) Init a fresh TS/Vitest project
 
 > Skip if you're using this repo as-is. For a fresh scratch project:
@@ -33,10 +31,9 @@ npm i -D vitest typescript
 
 ## Launch local chains (3 terminals)
 
-### Terminal A — Kusama stack
+### Terminal A - Kusama stack
 
 ```bash
-cd xcm-over-bridges
 ./scripts/kusama/launch.sh
 ```
 
@@ -46,10 +43,9 @@ This starts:
 * Kusama Bridge Hub (ws://localhost:8001)
 * Kusama relay (ws://localhost:8002)
 
-### Terminal B — Polkadot stack
+### Terminal B - Polkadot stack
 
 ```bash
-cd xcm-over-bridges
 ./scripts/polkadot/launch.sh
 ```
 
@@ -61,7 +57,7 @@ This starts:
 
 > Keep both terminals running.
 
-### Terminal C — Register endpoints with papi
+### Terminal C - Register endpoints with papi
 
 After Kusama finishes booting:
 
@@ -74,9 +70,9 @@ npx papi add Kusama           -w ws://localhost:8002
 After Polkadot finishes booting:
 
 ```bash
-npx papi add PolkadotAssetHub -w ws://localhost:8003
+npx papi add PolkadotAssetHub  -w ws://localhost:8003
 npx papi add PolkadotBridgeHub -w ws://localhost:8004
-npx papi add Polkadot         -w ws://localhost:8005
+npx papi add Polkadot          -w ws://localhost:8005
 ```
 
 ## Run the test
