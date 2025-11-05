@@ -1,6 +1,6 @@
 # 📘 XCM over Bridges Transaction Walkthrough
 
-## Transaction
+## 🔄 Transaction
 
 * **Hash:** [`0xd0d7ca77002dd6a13f4fc500f9c072393e5821570f17ecbb1364ccfb6544d4d8`](https://xcscan.io/tx/#0xd0d7ca77002dd6a13f4fc500f9c072393e5821570f17ecbb1364ccfb6544d4d8)
 * **Sent:** 2025-11-05 04:04:24 GMT
@@ -17,7 +17,7 @@ This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which con
 2. **Polkadot Bridge Hub ↔ Kusama Bridge Hub (cross-relay delivery via trustless relayers and on-chain verification)**
 3. **Kusama Bridge Hub → Kusama Asset Hub (within Kusama)**
 
-## 🦴 Leg 1 - Polkadot Asset Hub → Polkadot Bridge Hub
+## ✉️ Leg 1 - Polkadot Asset Hub → Polkadot Bridge Hub
 
 **Duration:** +0m 24s
 
@@ -38,7 +38,7 @@ Execution steps:
 2. `XcmpQueue` [handles](https://assethub-polkadot.subscan.io/block/10265959) parachain-to-parachain delivery inside Polkadot.
 3. The **bridge messages pallet** on the Bridge Hub [receives and queues](https://bridgehub-polkadot.subscan.io/block/6329124) the message as an **outbound bridge transfer**, to be relayed trustlessly to Kusama.
 
-## 🦴 Leg 2 - Polkadot Bridge Hub ↔ Kusama Bridge Hub
+## ✉️ Leg 2 - Polkadot Bridge Hub ↔ Kusama Bridge Hub
 
 **Duration:** +7m 54s
 
@@ -64,7 +64,7 @@ Execution steps:
 
 This step bridges **finality and message proofs** between the two relay chains through **trustless relayers** and **on-chain verification**, without reliance on any trusted off-chain intermediary.
 
-## 🦴 Leg 3 - Kusama Bridge Hub → Kusama Asset Hub
+## ✉️ Leg 3 - Kusama Bridge Hub → Kusama Asset Hub
 
 **Duration:** +0m 12s
 
