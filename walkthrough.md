@@ -23,7 +23,7 @@ This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which con
 
 |               | Polkadot Asset Hub            | Polkadot Bridge Hub      |
 | ------------- | ----------------------------- | ------------------------ |
-| **Block**     | 10 265 959 @ 04:04:24         | 6 329 124 @ 04:04:48     |
+| **Block**     | 10265959 @ 04:04:24           | 6329124 @ 04:04:48       |
 | **Tx Hash**   | `0xe416…8d1b57`               |                          |
 | **Extrinsic** | `PolkadotXcm.transfer_assets` |                          |
 | **Event**     | `XcmpQueue.XcmpMessageSent`   | `MessageQueue.Processed` |
@@ -32,11 +32,11 @@ This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which con
 
 This is a local XCM sent over the **XCMP** channel within the Polkadot network. It withdraws the KSM-backed asset from the sender's account and forwards an XCM to the [**XcmOverBridgeHubKusama**](https://paritytech.github.io/polkadot-sdk/master/pallet_xcm_bridge_hub/) router pallet on the Polkadot Bridge Hub, preparing it for cross-relay delivery to Kusama.
 
-**On-chain components:**
+Execution steps:
 
-* `PolkadotXcm::transfer_assets` constructs the [XCM payload](https://assethub-polkadot.subscan.io/extrinsic/0xe4167762d698c829d9d80e4b43f974623d1bca04601327db4af7ffa8e68d1b57).
-* `XcmpQueue` [handles](https://assethub-polkadot.subscan.io/block/10265959) parachain-to-parachain delivery inside Polkadot.
-* The **bridge messages pallet** on the Bridge Hub [receives and queues](https://bridgehub-polkadot.subscan.io/block/6329124) the message as an **outbound bridge transfer**, to be relayed trustlessly to Kusama.
+1. `PolkadotXcm::transfer_assets` constructs the [XCM payload](https://assethub-polkadot.subscan.io/extrinsic/0xe4167762d698c829d9d80e4b43f974623d1bca04601327db4af7ffa8e68d1b57).
+2. `XcmpQueue` [handles](https://assethub-polkadot.subscan.io/block/10265959) parachain-to-parachain delivery inside Polkadot.
+3. The **bridge messages pallet** on the Bridge Hub [receives and queues](https://bridgehub-polkadot.subscan.io/block/6329124) the message as an **outbound bridge transfer**, to be relayed trustlessly to Kusama.
 
 ## 🦴 Leg 2 - Polkadot Bridge Hub ↔ Kusama Bridge Hub
 
@@ -55,10 +55,10 @@ Here's your data reformatted to match that exact table style and structure:
 
 This leg represents the **cross-relay bridge delivery**, handled by the **Bridge Messages pallet** within the Polkadot ↔ Kusama trustless bridge system.
 
-Sequence:
+Execution steps:
 
 1. The message is [stored](https://bridgehub-polkadot.subscan.io/block/6329124) on **Polkadot BH** as an *undelivered* outbound message (`MessageAccepted` event).
-2. [**Relayers**](https://wiki.polkadot.com/learn/learn-dot-ksm-bridge/#polkadot-and-kusama-bridge-relayers) — off-chain processes that connect to both chains — observe finalized Polkadot headers and relay them to the **Kusama Bridge Hub's on-chain light client**.
+2. [**Relayers**](https://wiki.polkadot.com/learn/learn-dot-ksm-bridge/#polkadot-and-kusama-bridge-relayers) — off-chain processes that connect to both chains — observe finalised Polkadot headers and relay them to the **Kusama BH's on-chain light client**.
 3. A relayer then [submits](https://bridgehub-kusama.subscan.io/block/6896364) a `receive_messages_proof` transaction on **Kusama BH**, including a verified proof of the outbound message from Polkadot BH.
 4. Once verified and finalised, the message becomes *delivered* (`MessagesReceived` event).
 
@@ -70,20 +70,20 @@ This step bridges **finality and message proofs** between the two relay chains t
 
 |               | Kusama Bridge Hub                               | Kusama Asset Hub         |
 | ------------- | ----------------------------------------------- | ------------------------ |
-| **Block**     | 6896364 @ 04:12:42                              | 11 520 082 @ 04:12:54    |
+| **Block**     | 6896364 @ 04:12:42                              | 11520082 @ 04:12:54      |
 | **Extrinsic** | `BridgePolkadotMessages.receive_messages_proof` |                          |
 | **Event**     | `XcmpQueue.XcmpMessageSent`                     | `MessageQueue.Processed` |
 
 **Description:**
 
-Once the message arrives on **Kusama Bridge Hub**, it is re-wrapped into a new **XCM V5** instruction for **intra-Kusama delivery** to the Asset Hub parachain.
+Once the message arrives on **Kusama BH**, it is rewrapped into a new **XCM** instruction for **intra-Kusama delivery** to Kusama AH.
 
 Execution steps:
 
-1. `BridgePolkadotMessages.receive_messages_proof` triggers dispatch to `XcmpQueue`.
-2. The **Kusama Relay Chain** routes the XCMP packet to the **Asset Hub**.
-3. The Asset Hub executes `DepositAsset`, crediting 317.13 KSM to the destination account.
-4. The message is marked *Processed* and complete.
+1. `BridgePolkadotMessages.receive_messages_proof` [dispatches](https://bridgehub-kusama.subscan.io/block/6896364) the verified message to `XcmpQueue`.
+2. The **Kusama Relay Chain** routes the XCMP packet to **Kusama AH**.
+3. Kusama AH [executes](https://assethub-kusama.subscan.io/block/11520082) `DepositAsset`, crediting 317.13 KSM to the destination account.
+4. The message is marked *processed* (`MessageQueue.Processed` event) and the transfer is complete.
 
 ## ⏱ End-to-End Timing
 
