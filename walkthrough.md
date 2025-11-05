@@ -11,11 +11,10 @@
 
 ## 🔗 Overview
 
-This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which connects the two relay chains via their respective **Bridge Hubs**.
-XCM messages travel in **three legs**:
+This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which connects the two relay chains via their respective **Bridge Hubs**. XCMs travel in **three legs**:
 
 1. **Polkadot Asset Hub → Polkadot Bridge Hub (within Polkadot)**
-2. **Polkadot Bridge Hub ↔ Kusama Bridge Hub (cross-relay bridge)**
+2. **Polkadot Bridge Hub ↔ Kusama Bridge Hub (cross-relay delivery via trustless relayers and on-chain verification)**
 3. **Kusama Bridge Hub → Kusama Asset Hub (within Kusama)**
 
 ## 🦴 Leg 1 - Polkadot Asset Hub → Polkadot Bridge Hub
