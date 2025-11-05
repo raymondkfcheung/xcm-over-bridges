@@ -19,7 +19,7 @@ This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which con
 
 ## ✉️ Leg 1 - Polkadot Asset Hub → Polkadot Bridge Hub
 
-**Duration:** +0m 24s
+**Duration:** 24s
 
 |               | Polkadot Asset Hub            | Polkadot Bridge Hub      |
 | ------------- | ----------------------------- | ------------------------ |
@@ -40,7 +40,7 @@ This is a local XCM sent over the **XCMP** channel within the Polkadot network. 
 
 ## ✉️ Leg 2 - Polkadot Bridge Hub ↔ Kusama Bridge Hub
 
-**Duration:** +7m 54s
+**Duration:** 7m 54s
 
 Here's your data reformatted to match that exact table style and structure:
 
@@ -66,7 +66,7 @@ This step bridges **finality and message proofs** between the two relay chains t
 
 ## ✉️ Leg 3 - Kusama Bridge Hub → Kusama Asset Hub
 
-**Duration:** +0m 12s
+**Duration:** 12s
 
 |               | Kusama Bridge Hub                               | Kusama Asset Hub         |
 | ------------- | ----------------------------------------------- | ------------------------ |
@@ -88,7 +88,7 @@ Once the message arrives on **Kusama BH**, it is rewrapped into a new **XCM** in
 ## ⏱ End-to-End Timing
 
 | Leg       | From → To                 | Duration       |
-| --------- | ------------------------- | -------------- |
+| --------- | ------------------------- | --------------:|
 | 1         | Polkadot AH → Polkadot BH | 24 s           |
 | 2         | Polkadot BH → Kusama BH   | 7 m 54 s       |
 | 3         | Kusama BH → Kusama AH     | 12 s           |
