@@ -30,7 +30,7 @@ This cross-ecosystem transfer uses the **Polkadot ↔ Kusama bridge**, which con
 
 **Description:**
 
-This is a local XCM sent over the **XCMP** channel within the Polkadot network. It withdraws the KSM-backed asset from the sender's account and forwards an XCM to the [**XcmOverBridgeHubKusama**](https://paritytech.github.io/polkadot-sdk/master/pallet_xcm_bridge_hub/) router pallet on the Polkadot Bridge Hub, preparing it for cross-relay delivery to Kusama.
+This is a local XCM sent over the **XCMP** channel within the Polkadot network. It withdraws a KSM-backed asset from the sender's account and forwards an XCM to the [**XcmOverBridgeHubKusama**](https://paritytech.github.io/polkadot-sdk/master/pallet_xcm_bridge_hub/) router pallet on the Polkadot BH, preparing it for cross-relay delivery to Kusama.
 
 Execution steps:
 
@@ -62,7 +62,7 @@ Execution steps:
 3. A relayer then [submits](https://bridgehub-kusama.subscan.io/block/6896364) a `receive_messages_proof` transaction on **Kusama BH**, including a verified proof of the outbound message from Polkadot BH.
 4. Once verified and finalised, the message becomes *delivered* (`MessagesReceived` event).
 
-This step bridges **finality and message proofs** between the two relay chains through **trustless relayers** and **on-chain verification**, rather than any trusted off-chain intermediary.
+This step bridges **finality and message proofs** between the two relay chains through **trustless relayers** and **on-chain verification**, without reliance on any trusted off-chain intermediary.
 
 ## 🦴 Leg 3 - Kusama Bridge Hub → Kusama Asset Hub
 
@@ -105,8 +105,7 @@ Execution steps:
 
 ## 🧠 Conceptual Summary
 
-* **XCM (Cross-Consensus Messaging)** handles *intra-ecosystem* parachain messaging.
 * **Bridge Messages Pallet** handles *cross-relay* delivery between Polkadot and Kusama.
-* **Relayers** act as the trusted off-chain messengers that prove and submit message deliveries.
+* **Relayers** act as trustless off-chain agents that prove and submit message deliveries.
 * Once the bridge message is finalised on both sides, the receiving hub emits `XcmpMessageSent` to continue local routing.
 * Final confirmation (`MessageQueue.Processed`) marks successful XCM execution and asset credit.
