@@ -22,18 +22,16 @@ XCM messages travel in **three legs**:
 
 **Duration:** +0m 24s
 
-| Item            | Details                         |
-| --------------- | ------------------------------- |
-| **Source**      | Polkadot Asset Hub (para 1000)  |
-| **Destination** | Polkadot Bridge Hub (para 1002) |
-| **Extrinsic**   | `PolkadotXcm.transfer_assets`   |
-| **Event**       | `XcmpQueue.XcmpMessageSent`     |
-| **Block**       | #10 265 959 - 04:04:24 GMT      |
-| **Tx Hash**     | `0xe416…8d1b57`                 |
+|           | Polkadot Asset Hub            | Polkadot Bridge Hub      |
+| --------- | ----------------------------- | ------------------------ |
+| Block     | 1026595 @ 04:04:24            | 6329124 @ 04:04:48       |
+| Tx Hash   | `0xe416…8d1b57`               |                          |
+| Extrinsic | `PolkadotXcm.transfer_assets` |                          |
+| Event     | `XcmpQueue.XcmpMessageSent`   | `MessageQueue.Processed` |
 
 **Description:**
 This is a local **XCM v5** message sent over the **XCMP** channel inside the Polkadot network.
-It withdraws KSM-backed asset from the sender’s account and enqueues a message to the **ToKusama** router on the Bridge Hub for forwarding across the bridge.
+It withdraws KSM-backed asset from the sender's account and enqueues a message to the **ToKusama** router on the Bridge Hub for forwarding across the bridge.
 
 **On-chain components:**
 
@@ -45,35 +43,36 @@ It withdraws KSM-backed asset from the sender’s account and enqueues a message
 
 **Duration:** +7m 54s
 
-| Item                  | Details                                                                           |
-| --------------------- | --------------------------------------------------------------------------------- |
-| **Outbound event**    | `BridgeKusamaMessages.MessageAccepted` (Polkadot BH #6 329 124 @ 04:04:48)        |
-| **Inbound extrinsic** | `BridgePolkadotMessages.receive_messages_proof` (Kusama BH #6 896 364 @ 04:12:42) |
-| **Event**             | `BridgePolkadotMessages.MessagesReceived`                                         |
-| **Duration**          | ≈ 7 min 54 s                                                                      |
+Here's your data reformatted to match that exact table style and structure:
+
+|           | Polkadot Bridge Hub                    | Kusama Bridge Hub                               |
+| --------- | -------------------------------------- | ----------------------------------------------- |
+| Block     | 6329124 @ 04:04:48                     | 6896364 @ 04:12:42                              |
+| Tx Hash   |                                        | `0x6d9e…eb5cf3`                                 |
+| Extrinsic |                                        | `BridgePolkadotMessages.receive_messages_proof` |
+| Event     | `BridgeKusamaMessages.MessageAccepted` | `BridgePolkadotMessages.MessagesReceived`       |
 
 **Description:**
-This leg represents the **cross-relay bridge delivery**, handled by the **Bridge Messages pallet**.
+This leg represents the **cross-relay bridge delivery**, handled by the **Bridge Messages pallet** within the Polkadot ↔ Kusama trustless bridge system.
 
 Sequence:
 
 1. The message is [stored](https://bridgehub-polkadot.subscan.io/block/6329124) on **Polkadot BH** as an *undelivered* outbound message (`MessageAccepted` event).
-2. [Off-chain **relayers**](https://wiki.polkadot.com/learn/learn-dot-ksm-bridge/#polkadot-and-kusama-bridge-relayers) watch for these undelivered messages.
-3. A relayer [crafts and submits](https://bridgehub-kusama.subscan.io/block/6896364) a `receive_messages_proof` transaction on **Kusama BH**, containing a proof from Polkadot BH.
-4. Once finalised, the message becomes *delivered* (`MessagesReceived` event).
+2. [**Relayers**](https://wiki.polkadot.com/learn/learn-dot-ksm-bridge/#polkadot-and-kusama-bridge-relayers) — off-chain processes that connect to both chains — observe finalized Polkadot headers and relay them to the **Kusama Bridge Hub's on-chain light client**.
+3. A relayer then [submits](https://bridgehub-kusama.subscan.io/block/6896364) a `receive_messages_proof` transaction on **Kusama BH**, including a verified proof of the outbound message from Polkadot BH.
+4. Once verified and finalised, the message becomes *delivered* (`MessagesReceived` event).
 
-This step bridges finality and message proofs between the two relay chains.
+This step bridges **finality and message proofs** between the two relay chains through **trustless relayers** and **on-chain verification**, rather than any trusted off-chain intermediary.
 
 ## 🦴 Leg 3 - Kusama Bridge Hub → Kusama Asset Hub
 
 **Duration:** +0m 12s
 
-| Item                  | Details                                                       |
-| --------------------- | ------------------------------------------------------------- |
-| **Outbound event**    | `XcmpQueue.XcmpMessageSent` (Kusama BH #6 896 364 @ 04:12:42) |
-| **Relay chain hop**   | Kusama Relay (#30 830 245 @ 04:12:48)                         |
-| **Final destination** | Kusama Asset Hub #11 520 082 @ 04:12:54                       |
-| **Event**             | `MessageQueue.Processed`                                      |
+|           | Kusama Bridge Hub                               | Kusama Asset Hub         |
+| --------- | ----------------------------------------------- | ------------------------ |
+| Block     | 6896364 @ 04:12:42                              | 11 520 082 @ 04:12:54    |
+| Extrinsic | `BridgePolkadotMessages.receive_messages_proof` |                          |
+| Event     | `XcmpQueue.XcmpMessageSent`                     | `MessageQueue.Processed` |
 
 **Description:**
 Once the message arrives on **Kusama Bridge Hub**, it is re-wrapped into a new **XCM V5** instruction for **intra-Kusama delivery** to the Asset Hub parachain.
