@@ -42,8 +42,6 @@ This is a local XCM sent over the **XCMP** channel within the Polkadot network. 
 
 **Duration:** 7m 54s
 
-Here's your data reformatted to match that exact table style and structure:
-
 |               | Polkadot Bridge Hub                    | Kusama Bridge Hub                               |
 | ------------- | -------------------------------------- | ----------------------------------------------- |
 | **Block**     | 6329124 @ 04:04:48                     | 6896364 @ 04:12:42                              |
