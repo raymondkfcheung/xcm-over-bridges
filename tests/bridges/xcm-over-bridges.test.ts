@@ -235,6 +235,7 @@ describe("XCM Over Bridges Tests", () => {
     // console.log(
     //   `Remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
     // );
+    expect(remoteMessage.value.length).toBeGreaterThan(2);
     expect(remoteMessage.value.at(-1)!!.type).toEqual("SetTopic");
     const exportMessage = remoteMessage.value.at(-2) as Extract<
       XcmV5Instruction,
@@ -422,9 +423,9 @@ describe("XCM Over Bridges Tests", () => {
     expect(bridgeMessageOnPBH).toHaveLength(1);
 
     const bridgeMessage = bridgeMessageOnPBH[0];
-    console.log(
-      `Bridge Message on PolkadotBridgeHub: ${prettyString(bridgeMessage)}`,
-    );
+    // console.log(
+    //   `Bridge Message on PolkadotBridgeHub: ${prettyString(bridgeMessage)}`,
+    // );
     // Xcm([
     //   UniversalOrigin(GlobalConsensus(Polkadot)),
     //   DescendOrigin(X1([Parachain(1000)])),
@@ -444,6 +445,7 @@ describe("XCM Over Bridges Tests", () => {
     expect(foreignAssetsPallet).toBeDefined();
 
     const instructions = bridgeMessage.value as XcmV5Instruction[];
+    const exportedXcm: XcmV5Instruction[] = exportMessage.value.xcm;
 
     const universalOriginIdx = instructions.findIndex(
       (i) => i.type === "UniversalOrigin",
@@ -459,38 +461,46 @@ describe("XCM Over Bridges Tests", () => {
       (i) => i.type === "WithdrawAsset",
     );
     expect(withdrawAssetIdx).toBe(2);
+    expect(instructions[withdrawAssetIdx]).toEqual(
+      exportedXcm[withdrawAssetIdx - 2],
+    );
 
     const clearOriginIdx = instructions.findIndex(
       (i) => i.type === "ClearOrigin",
     );
     expect(clearOriginIdx).toBe(3);
+    expect(instructions[clearOriginIdx]).toEqual(
+      exportedXcm[clearOriginIdx - 2],
+    );
 
     const buyExecutionIdx = instructions.findIndex(
       (i) => i.type === "BuyExecution",
     );
     expect(buyExecutionIdx).toBe(4);
+    expect(instructions[buyExecutionIdx]).toEqual(
+      exportedXcm[buyExecutionIdx - 2],
+    );
 
     const depositAssetIdx = instructions.findIndex(
       (i) => i.type === "DepositAsset",
     );
     expect(depositAssetIdx).toBe(5);
+    expect(prettyString(instructions[depositAssetIdx])).toEqual(
+      prettyString(exportedXcm[depositAssetIdx - 2]),
+    );
 
     const setTopicIdx = instructions.findIndex((i) => i.type === "SetTopic");
     expect(setTopicIdx).toBe(6);
 
     // Kusama Bridge Hub -> Kusama Asset Hub
     // From Kusama Bridge Hub
-    const exportedXcm: XcmV5Instruction[] = exportMessage.value.xcm;
-    exportedXcm[exportedXcm.length - 1] = instructions[setTopicIdx]!;
     bridgeMessage.value = [
       XcmV5Instruction.DescendOrigin(
         XcmV5Junctions.X1(
           XcmV5Junction.PalletInstance(foreignAssetsPallet.index),
         ),
       ),
-      instructions[universalOriginIdx] as XcmV5Instruction,
-      instructions[descendOriginIdx] as XcmV5Instruction,
-      ...exportedXcm,
+      ...instructions,
     ];
     console.log(
       `Updated Message on KusamaBridgeHub: ${prettyString(bridgeMessage)}`,
