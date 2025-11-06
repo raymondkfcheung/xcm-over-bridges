@@ -10,7 +10,9 @@
 
 This multi-layer interplay means even "dry-runs" can't directly simulate a real bridge roundtrip - since the **proof verification, relay headers, and message queues** aren't self-contained inside a single runtime.
 
-The issue is tracked upstream: [paritytech/polkadot-sdk#4793](https://github.com/paritytech/polkadot-sdk/issues/4793).
+The issues are tracked upstream:
+* [paritytech/polkadot-sdk#4793](https://github.com/paritytech/polkadot-sdk/issues/4793)
+* [paritytech/polkadot-sdk#7837](https://github.com/paritytech/polkadot-sdk/issues/7837)
 
 ## ⚙️ Existing Rust Tests
 
