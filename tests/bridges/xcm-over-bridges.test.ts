@@ -544,7 +544,7 @@ describe("XCM Over Bridges Tests", () => {
     // console.log(
     //   `Dry Run Execution Result on KusamaAssetHub (from PolkadotAssetHub): ${prettyString(executionResultOnKAHFromPAH)}`,
     // );
-    expect(executionResultOnKAHFromPAH.success).toBe(true);
+    expect(dryRunResultOnKAHFromPAH.success).toBe(true);
     expect(executionResultOnKAHFromPAH.success).toBe(true);
 
     const weightForBM: any =

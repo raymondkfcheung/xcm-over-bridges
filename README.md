@@ -2,7 +2,7 @@
 
 Local E2E Test (PAH ⇄ PBH, PBH ⇄ KBH, KBH ⇄ KAH)
 
-This README [walks you through](walkthrough.md) spinning up **local Kusama & Polkadot networks** (with Asset Hubs & Bridge Hubs via Chopsticks), wiring **polkadot-api (papi)** endpoints, and running the **`transfers across Bridges`** Vitest spec that dry-runs and executes the XCM, then verifies pre/post balances and on-chain events.
+This README [walks you through](walkthrough.md) spinning up **local Kusama & Polkadot networks** (with Asset Hubs & Bridge Hubs via Chopsticks), wiring **polkadot-api (papi)** endpoints, and running the [**`transfers across Bridges`**](tests/bridges/xcm-over-bridges.test.ts) Vitest spec that [dry-runs and executes the XCM](testing.md), then verifies pre/post balances and on-chain events.
 
 ## Clone
 
