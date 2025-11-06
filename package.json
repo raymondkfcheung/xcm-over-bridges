@@ -1,7 +1,7 @@
 {
   "name": "xcm-over-bridges",
   "version": "1.0.0",
-  "description": "",
+  "description": "Local E2E Test (PAH ⇄ PBH, PBH ⇄ KBH, KBH ⇄ KAH)",
   "main": "index.js",
   "scripts": {
     "test": "vitest",
@@ -36,5 +36,8 @@
     "@polkadot-labs/hdkd": "^0.0.25",
     "@polkadot-labs/hdkd-helpers": "^0.0.26",
     "polkadot-api": "^1.19.1"
+  },
+  "directories": {
+    "test": "tests"
   }
 }

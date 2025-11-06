@@ -25,8 +25,8 @@ npm install -g @acala-network/chopsticks@latest
 
 ```bash
 npm init -y
-npx tsc --init
-npm i -D vitest typescript
+npm i typescript
+npm i -D vitest
 ```
 
 ## Launch local chains (3 terminals)
