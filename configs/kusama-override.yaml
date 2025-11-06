@@ -4,7 +4,7 @@ endpoint:
   - wss://kusama-rpc.polkadot.io
 mock-signature-host: true
 block: ${env.KUSAMA_BLOCK_NUMBER}
-db: ./db-kusama.sqlite
+db: ./db-ksm.sqlite
 # wasm-override: staging_kusama_runtime.wasm
 runtime-log-level: 5
 
