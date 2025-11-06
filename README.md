@@ -93,9 +93,3 @@ What the test does (high level):
 * **Checks pre/post balances** (native KSM on KAH via `System.Account.data.free`) to ensure:
   * Sender decreased by `amount + fee`
   * Beneficiary increased by `amount`
-
-## Run just this test again
-
-```bash
-npx vitest run -t "transfers across Bridges"
-```
