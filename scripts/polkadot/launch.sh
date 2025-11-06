@@ -10,7 +10,7 @@ cd ${PROJECT_DIR}
 ${PROJECT_DIR}/scripts/download-runtime.sh "Polkadot Bridge Hub"
 
 echo "Launching Polkadot..."
-npx @acala-network/chopsticks xcm \
+npx @acala-network/chopsticks@latest xcm \
     -r polkadot \
     -p configs/polkadot-asset-hub-override.yaml \
     -p configs/polkadot-bridge-hub-override.yaml

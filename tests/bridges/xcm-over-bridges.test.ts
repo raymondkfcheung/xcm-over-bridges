@@ -236,9 +236,9 @@ describe("XCM Over Bridges Tests", () => {
     });
     expect(remoteMessages).toHaveLength(1);
     const remoteMessage: any = remoteMessages[0];
-    // console.log(
-    //   `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
-    // );
+    console.log(
+      `remote Message on PolkadotAssetHub: ${prettyString(remoteMessage)}`,
+    );
     const exportMessage = remoteMessage.value.at(-2);
     expect(exportMessage.type).toEqual("ExportMessage");
     expect(exportMessage.value.network.type).toEqual("Kusama");

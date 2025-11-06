@@ -6,7 +6,7 @@ package-lock.json
 # Chopsticks/Papi files
 .papi/
 **/__snapshots__
-db.sqlite*
+db*.sqlite*
 
 # Local test files
 wasms/
