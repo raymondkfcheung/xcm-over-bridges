@@ -93,3 +93,8 @@ What the test does (high level):
 * **Checks pre/post balances** (native KSM on KAH via `System.Account.data.free`) to ensure:
   * Sender decreased by `amount + fee`
   * Beneficiary increased by `amount`
+
+## Related Issues
+
+* [paritytech/polkadot-sdk#4793 - Bridges: Enable XCM emulation using Chopsticks](https://github.com/paritytech/polkadot-sdk/issues/4793)
+* [paritytech/polkadot-sdk#5708 - Bridges: Add support for XCM dry-run execution](https://github.com/paritytech/polkadot-sdk/issues/5708)
