@@ -8,7 +8,9 @@ import {
   type Transaction,
   type TypedApi,
 } from "polkadot-api";
+import { blake2b } from "@noble/hashes/blake2.js";
 import { KusamaBridgeHub, PolkadotBridgeHub } from "@polkadot-api/descriptors";
+import { toHex } from "@polkadot-api/utils";
 import { ss58Address, ss58Encode } from "@polkadot-labs/hdkd-helpers";
 import {
   createApiClient,
@@ -153,5 +155,28 @@ describe("Receive Message Proof Tests", () => {
       0,
     );
     expect(thisChain.keyArgs[0]).toBe(relayer_id_at_bridged_chain);
+  });
+
+  it("get Bridged Header Hash", async () => {
+    const bridgedHaderHex =
+      "0xb54d4d5067a839273137f94fe63aa17cd4430a3a9498f87fdf19c3e80481bcea";
+
+    // const blockAt = {
+    //   at: "0x96d3adf2e19a049853729bb7fd26e8a75253002be1719cbed2a597c91a4c677f",
+    // };
+    // const validationData =
+    //   await kusamaBridgeHubApi.query.ParachainSystem.ValidationData.getValue(
+    //     blockAt,
+    //   );
+    // console.log(`ValidationData: ${prettyString(validationData)}`);
+
+    // const parenHead = validationData!!.parent_head;
+    // const bridged_header_hash = blake2b(parenHead.asBytes(), { dkLen: 32 });
+    // console.log(
+    //   "bridged_header_hash = ",
+    //   toHex(bridged_header_hash),
+    //   " vs ",
+    //   bridgedHaderHex,
+    // );
   });
 });
