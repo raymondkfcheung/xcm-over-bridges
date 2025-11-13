@@ -172,4 +172,29 @@ describe("Receive Message Proof Tests", () => {
       bridged_header_hash.asHex(),
     );
   });
+
+  it("get Storage Proof", async () => {
+    const lane_id = Binary.fromHex("0x00000001");
+    const nonces = [1454n, 1455n];
+
+    // outbound lane summary key
+    const laneKey =
+      polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundLanes.getValue(
+        lane_id,
+      );
+
+    // outbound message keys
+    const messageKeys = nonces.map((nonce) =>
+      polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+        {
+          lane_id,
+          nonce,
+        },
+      ),
+    );
+
+    // all keys together
+    const keys = [laneKey, ...messageKeys];
+    console.log(`keys: ${prettyString(keys)}`);
+  });
 });
