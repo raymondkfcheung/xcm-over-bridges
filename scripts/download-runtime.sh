@@ -2,7 +2,7 @@
 
 set -e
 
-RUNTIMES_VERSION="v2.0.1"
+RUNTIMES_VERSION="v2.0.2"
 THIS_DIR=$(cd $(dirname $0); pwd)
 PROJECT_DIR=${THIS_DIR}/../
 cd ${PROJECT_DIR}
@@ -30,7 +30,7 @@ CONFIG_FILE_PATH="configs/${PARACHAIN_HYPHEN}-override.yaml"
 if [ ! -f "${WASM_FILE_PATH}" ]; then
     echo "${PARACHAIN_NAME} WASM (${WASM_FILE_PATH}) not found. Downloading..."
     mkdir -p wasms
-    wget https://github.com/polkadot-fellows/runtimes/releases/download/${RUNTIMES_VERSION}/compact-wasms.zip -O wasms/runtimes_${RUNTIMES_VERSION}-wasms.zip
+    wget https://github.com/polkadot-fellows/runtimes/releases/download/${RUNTIMES_VERSION}/runtimes-with-try-runtime-and-logging.zip -O wasms/runtimes_${RUNTIMES_VERSION}-wasms.zip
     unzip -o wasms/runtimes_${RUNTIMES_VERSION}-wasms.zip -d wasms/
 fi
 
