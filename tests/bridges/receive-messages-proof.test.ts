@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   Binary,
   Enum,
@@ -26,7 +26,7 @@ let polkadotBridgeHubClient: PolkadotClient;
 let kusamaBridgeHubApi: TypedApi<typeof KusamaBridgeHub>;
 let polkadotBridgeHubApi: TypedApi<typeof PolkadotBridgeHub>;
 
-beforeAll(async () => {
+beforeEach(async () => {
   kusamaBridgeHubClient = createApiClient(KUSAMA_BH);
   polkadotBridgeHubClient = createApiClient(POLKADOT_BH);
 
@@ -34,7 +34,8 @@ beforeAll(async () => {
   polkadotBridgeHubApi = polkadotBridgeHubClient.getTypedApi(PolkadotBridgeHub);
 });
 
-afterAll(async () => {
+afterEach(async () => {
+  await new Promise((r) => setTimeout(r, 100));
   kusamaBridgeHubClient?.destroy?.();
   polkadotBridgeHubClient?.destroy?.();
 });
