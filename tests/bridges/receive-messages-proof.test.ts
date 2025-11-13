@@ -160,13 +160,13 @@ describe("Receive Message Proof Tests", () => {
     const bridged_header_hash: FixedSizeBinary<32> = Binary.fromHex(
       "0xb54d4d5067a839273137f94fe63aa17cd4430a3a9498f87fdf19c3e80481bcea",
     );
-    const blockAt = {
-      at: "0x96d3adf2e19a049853729bb7fd26e8a75253002be1719cbed2a597c91a4c677f",
-    };
+    const currentBlock = await kusamaBridgeHubClient.getFinalizedBlock();
+    // console.log(`FinalizedBlock: ${prettyString(currentBlock)}`);
+    expect(currentBlock.hash).toBe(
+      "0x96d3adf2e19a049853729bb7fd26e8a75253002be1719cbed2a597c91a4c677f",
+    );
     const parasInfo: any[] =
-      await kusamaBridgeHubApi.query.BridgePolkadotParachains.ParasInfo.getEntries(
-        blockAt,
-      );
+      await kusamaBridgeHubApi.query.BridgePolkadotParachains.ParasInfo.getEntries();
     console.log(`ParasInfo: ${prettyString(parasInfo)}`);
     expect(parasInfo[0].value.best_head_hash.head_hash.asHex()).toBe(
       bridged_header_hash.asHex(),
