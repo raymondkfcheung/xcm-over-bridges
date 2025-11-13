@@ -1,5 +1,5 @@
 import { withExpect } from "@acala-network/chopsticks-testing";
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   getTypedCodecs,
   Binary,

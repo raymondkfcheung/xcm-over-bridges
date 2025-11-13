@@ -1,4 +1,4 @@
-import { describe, it, beforeAll, afterAll } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   Binary,
   Enum,
@@ -8,7 +8,7 @@ import {
   type Transaction,
   type TypedApi,
 } from "polkadot-api";
-import { KusamaBridgeHub } from "@polkadot-api/descriptors";
+import { KusamaBridgeHub, PolkadotBridgeHub } from "@polkadot-api/descriptors";
 import { ss58Address, ss58Encode } from "@polkadot-labs/hdkd-helpers";
 import {
   createApiClient,
@@ -18,18 +18,25 @@ import {
 } from "../../src/helper.js";
 
 const KUSAMA_BH = "ws://localhost:8001";
+const POLKADOT_BH = "ws://localhost:8004";
 
 let kusamaBridgeHubClient: PolkadotClient;
+let polkadotBridgeHubClient: PolkadotClient;
+
 let kusamaBridgeHubApi: TypedApi<typeof KusamaBridgeHub>;
+let polkadotBridgeHubApi: TypedApi<typeof PolkadotBridgeHub>;
 
 beforeAll(async () => {
   kusamaBridgeHubClient = createApiClient(KUSAMA_BH);
+  polkadotBridgeHubClient = createApiClient(POLKADOT_BH);
 
   kusamaBridgeHubApi = kusamaBridgeHubClient.getTypedApi(KusamaBridgeHub);
+  polkadotBridgeHubApi = polkadotBridgeHubClient.getTypedApi(PolkadotBridgeHub);
 });
 
 afterAll(async () => {
   kusamaBridgeHubClient?.destroy?.();
+  polkadotBridgeHubClient?.destroy?.();
 });
 
 describe("Receive Message Proof Tests", () => {
@@ -86,5 +93,65 @@ describe("Receive Message Proof Tests", () => {
       tx.decodedCall,
     );
     console.log(`Dry Run Result: ${prettyString(dryRunResult)}`);
+    expect(dryRunResult.success).toBe(true);
+    expect(dryRunResult.value.execution_result.success).toBe(true);
+  });
+
+  it("get Relayer ID at Bridged Chain", async () => {
+    const lane_id = Binary.fromHex("0x00000001");
+    const nonce = 1455n;
+    const blockHash =
+      "0x99d7c732a806a92e527c26d125eda92daabb7574b9c6385e1c2b70122e0995e4";
+    const blockAt = { at: blockHash };
+    const events: any[] =
+      await polkadotBridgeHubApi.query.System.Events.getValue(blockAt);
+    // console.log(`Events at ${blockHash}: ${prettyString(events)}`);
+    expect(events.length).toBeGreaterThan(1);
+    const messageAcceptedEvents = events.filter(
+      (ev: any) =>
+        ev?.event?.type === "BridgeKusamaMessages" &&
+        ev?.event?.value?.type === "MessageAccepted",
+    );
+    expect(messageAcceptedEvents.length).toBe(1);
+    const messageAcceptedEvent = messageAcceptedEvents.at(-1).event.value;
+    console.log(
+      `MessageAccepted Event at ${blockHash}: ${prettyString(messageAcceptedEvent)}`,
+    );
+    expect(messageAcceptedEvent.value.lane_id.asHex()).toBe(lane_id.asHex());
+    expect(messageAcceptedEvent.value.nonce).toBe(nonce);
+
+    const laneData =
+      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundLanes.getValue(
+        lane_id,
+        blockAt,
+      );
+    console.log(`Outbound Lane Summary: ${prettyString(laneData)}`);
+    expect(laneData!!.latest_generated_nonce).toBe(nonce);
+
+    const outboundMessages =
+      await polkadotBridgeHubApi.query.BridgeKusamaMessages.OutboundMessages.getValue(
+        {
+          nonce,
+          lane_id,
+        },
+      );
+    console.log(`Outbound Messages: ${prettyString(outboundMessages)}`);
+
+    const replayers: any[] =
+      await polkadotBridgeHubApi.query.BridgeRelayers.RelayerRewards.getEntries(
+        blockAt,
+      );
+    // console.log(`Relayer Rewards: ${prettyString(replayers)}`);
+    expect(replayers.length).toBeGreaterThanOrEqual(1);
+    const thisChain = replayers[0];
+    console.log(`Relayer (ThisChain): ${prettyString(thisChain)}`);
+    expect(thisChain.keyArgs[1].type).toBe("PolkadotKusamaBridge");
+    expect(thisChain.keyArgs[1].value.owner.type).toBe("ThisChain");
+    expect(thisChain.keyArgs[1].value.lane_id.asHex()).toBe(lane_id.asHex());
+    const relayer_id_at_bridged_chain: SS58String = ss58Encode(
+      "0x1629f45fd0f1bdbfcd46142c8519e4da2967832e025b30232bddc8bba699ec7a",
+      0,
+    );
+    expect(thisChain.keyArgs[0]).toBe(relayer_id_at_bridged_chain);
   });
 });
